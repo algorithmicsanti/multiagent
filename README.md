@@ -11,6 +11,52 @@ Este documento cumple dos funciones:
 
 ---
 
+
+## Estado actual del repositorio (actualizado: 2026-03-14)
+
+Se integró una base funcional importante en `main` (`58edb15`), incluyendo:
+
+- Monorepo TypeScript con `pnpm workspace` + `turbo`
+- `apps/api` (Fastify + rutas iniciales)
+- `apps/dashboard` (Next.js con vistas de misiones/tareas/aprobaciones)
+- `services/orchestrator` (planner/dispatcher/state machine)
+- `services/worker-research`
+- `packages/agent-core`, `packages/db` (Prisma), `packages/observability`
+- Infra local (`docker-compose.dev`, Dockerfiles, scripts operativos)
+
+### Estrategia de trabajo en paralelo (para evitar choques)
+
+Mientras continúan features en API/orchestrator/dashboard, se recomienda que contribuciones paralelas se enfoquen en ejes de bajo conflicto:
+
+1. **Testing + CI/CD básico**
+   - pruebas unitarias y smoke tests
+   - pipeline de lint/test/build en PR
+   - checks mínimos de calidad antes de merge
+
+2. **Contratos y tipado compartido**
+   - endurecer tipos en `packages/agent-core`
+   - validaciones consistentes de payloads
+   - versionado de contratos entre orchestrator/workers
+
+3. **Observabilidad operativa mínima**
+   - logging estructurado consistente
+   - correlación por `missionId/taskId`
+   - eventos base para debugging y auditoría
+
+4. **Runbooks y documentación operativa aterrizada**
+   - alinear docs con la implementación real (no solo visión)
+   - procedimientos de staging, healthchecks y rollback
+
+### Convención de ramas sugerida
+
+- Trabajo de base/plataforma: `chore/*`, `docs/*`, `test/*`, `ci/*`
+- Features de producto: `feature/*`
+- Fixes puntuales: `fix/*`
+
+Regla práctica: evitar tocar simultáneamente archivos núcleo de lógica (`services/orchestrator/*`, `apps/api/src/routes/*`) desde múltiples ramas sin coordinación explícita.
+
+---
+
 # 1. Visión
 
 Queremos construir un sistema donde:
