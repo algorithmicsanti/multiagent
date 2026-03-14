@@ -1,0 +1,35 @@
+{
+  "name": "webmentor-agent-os",
+  "private": true,
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev --parallel",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "clean": "turbo run clean",
+    "db:generate": "turbo run db:generate --filter=@wm/db",
+    "db:migrate": "turbo run db:migrate --filter=@wm/db",
+    "infra:up": "docker compose -f infra/compose/docker-compose.dev.yml up -d",
+    "infra:down": "docker compose -f infra/compose/docker-compose.dev.yml down",
+    "infra:logs": "docker compose -f infra/compose/docker-compose.dev.yml logs -f",
+    "orchestrator:start": "pnpm --filter @wm/orchestrator dev",
+    "worker:research": "pnpm --filter @wm/worker-research dev",
+    "worker:frontend": "echo 'worker-frontend not yet implemented'",
+    "worker:backend": "echo 'worker-backend not yet implemented'",
+    "worker:devops": "echo 'worker-devops not yet implemented'",
+    "healthcheck": "bash infra/scripts/healthcheck.sh",
+    "deploy:staging": "bash infra/scripts/deploy-staging.sh",
+    "deploy:prod": "bash infra/scripts/deploy-prod.sh"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2",
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "tsup": "^8.3.5"
+  },
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=9"
+  }
+}

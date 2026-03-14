@@ -1,0 +1,121 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: wm_user
+      POSTGRES_PASSWORD: wm_password
+      POSTGRES_DB: webmentor_agent_os
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wm_user -d webmentor_agent_os"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.api
+    restart: unless-stopped
+    env_file: ../../.env
+    environment:
+      DATABASE_URL: postgresql://wm_user:wm_password@postgres:5432/webmentor_agent_os
+      REDIS_URL: redis://redis:6379
+      NODE_ENV: development
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ../../apps/api:/app/apps/api
+      - ../../packages:/app/packages
+    command: ["pnpm", "--filter", "@wm/api", "dev"]
+
+  orchestrator:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.service
+      args:
+        SERVICE: orchestrator
+    restart: unless-stopped
+    env_file: ../../.env
+    environment:
+      DATABASE_URL: postgresql://wm_user:wm_password@postgres:5432/webmentor_agent_os
+      REDIS_URL: redis://redis:6379
+      NODE_ENV: development
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ../../services/orchestrator:/app/services/orchestrator
+      - ../../packages:/app/packages
+    command: ["pnpm", "--filter", "@wm/orchestrator", "dev"]
+
+  worker-research:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.service
+      args:
+        SERVICE: worker-research
+    restart: unless-stopped
+    env_file: ../../.env
+    environment:
+      DATABASE_URL: postgresql://wm_user:wm_password@postgres:5432/webmentor_agent_os
+      REDIS_URL: redis://redis:6379
+      NODE_ENV: development
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ../../services/worker-research:/app/services/worker-research
+      - ../../packages:/app/packages
+    command: ["pnpm", "--filter", "@wm/worker-research", "dev"]
+
+  dashboard:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.dashboard
+    restart: unless-stopped
+    env_file: ../../.env
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:3001
+      NODE_ENV: development
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    volumes:
+      - ../../apps/dashboard:/app/apps/dashboard
+      - ../../packages:/app/packages
+    command: ["pnpm", "--filter", "@wm/dashboard", "dev"]
+
+volumes:
+  postgres_data:
+  redis_data:
