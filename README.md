@@ -1786,3 +1786,54 @@ observabilidad
 OpenClaw puede vivir en la VPS y aportar valor real, pero como operador técnico del sistema, no como el cerebro central del negocio.
 
 El activo estratégico debe ser el repositorio y runtime propio de Web Mentor.
+
+---
+
+## 38. Operación Docker en VPS (quickstart validado)
+
+Se validó que este repo ya está listo para operar con Docker Compose desde terminal de operaciones.
+
+### Comandos base
+
+```bash
+# desde la raíz del repo
+cp -n .env.example .env
+
+# levantar stack local de desarrollo (api, dashboard, orchestrator, worker, postgres, redis)
+docker compose -f infra/compose/docker-compose.dev.yml up -d --build
+
+# estado de contenedores
+docker compose -f infra/compose/docker-compose.dev.yml ps
+
+# logs
+docker compose -f infra/compose/docker-compose.dev.yml logs -f
+
+# healthcheck funcional
+bash infra/scripts/check-services.sh
+
+# bajar stack
+docker compose -f infra/compose/docker-compose.dev.yml down
+```
+
+### Precondiciones importantes
+
+1. Debe existir `.env` (puede copiarse de `.env.example`).
+2. El usuario operativo debe tener permisos sobre Docker daemon (`/var/run/docker.sock`).
+3. Si no hay permisos del socket, Docker fallará con `permission denied`.
+
+### Error operativo conocido
+
+En entornos sin permisos Docker para el usuario actual, aparece:
+
+`permission denied while trying to connect to the Docker daemon socket at unix:///var/run/docker.sock`
+
+Acción recomendada en VPS:
+
+```bash
+sudo usermod -aG docker $USER
+newgrp docker
+# o re-login de sesión
+```
+
+Luego reintentar `docker compose ... up -d --build`.
+
