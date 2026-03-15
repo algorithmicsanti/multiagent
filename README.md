@@ -50,8 +50,14 @@ Base funcional en `main` + hardening operativo reciente para poder levantar y ma
   - `deploy-staging.sh` queda como compat wrapper hacia `full`.
 - CI manual de deploy para staging:
   - `.github/workflows/deploy-staging.yml` (workflow_dispatch con input `target` y ejecución en runner `self-hosted,linux,staging`).
+- CI manual de deploy para producción con confirm explícita:
+  - `.github/workflows/deploy-production.yml` (`confirm=DEPLOY_PROD`, runner `self-hosted,linux,production`, `environment: production`).
 - Runbook operativo del pipeline por target:
   - `docs/runbooks/deploy-pipeline-targets.md`.
+- Estado y trazabilidad de deploy guardados por script:
+  - `infra/state/last-successful-deploy.env`
+  - `infra/state/deploy-history.log`
+  - rollback dirigido al último release exitoso: `infra/scripts/rollback-last-success.sh`.
 - Fix de conectividad SSR del dashboard en Docker:
   - `API_INTERNAL_URL=http://api:3001` para llamadas server-side.
 - Se removió `version:` del compose dev para evitar warning de deprecación en Docker Compose v2.

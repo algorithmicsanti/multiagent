@@ -7,3 +7,6 @@ dist/
 prisma/migrations/
 *.log
 coverage/
+infra/state/*.env
+infra/state/*.log
+!infra/state/.gitkeep

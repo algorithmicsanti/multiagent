@@ -5,12 +5,26 @@ TARGET="${1:-full}" # full|backend|frontend
 PRE_DEPLOY_COMMIT=$(git rev-parse HEAD)
 AUTO_ROLLBACK_ON_FAIL="${AUTO_ROLLBACK_ON_FAIL:-1}"
 COMPOSE_FILE="infra/compose/docker-compose.dev.yml"
+STATE_DIR="infra/state"
+LAST_SUCCESS_FILE="$STATE_DIR/last-successful-deploy.env"
+DEPLOY_HISTORY_FILE="$STATE_DIR/deploy-history.log"
 
 run_compose() {
   if docker compose -f "$COMPOSE_FILE" ps >/dev/null 2>&1; then
     docker compose -f "$COMPOSE_FILE" "$@"
   else
     sg docker -c "docker compose -f $COMPOSE_FILE $*"
+  fi
+}
+
+run_pnpm() {
+  if command -v pnpm >/dev/null 2>&1; then
+    pnpm "$@"
+  elif command -v corepack >/dev/null 2>&1; then
+    corepack pnpm "$@"
+  else
+    echo "pnpm/corepack not found in PATH"
+    return 127
   fi
 }
 
@@ -56,8 +70,8 @@ rollback_to_previous_commit() {
   echo "Attempting auto-rollback to $PREV_COMMIT"
 
   git checkout "$PREV_COMMIT"
-  pnpm install --frozen-lockfile
-  pnpm build
+  run_pnpm install --frozen-lockfile
+  run_pnpm build
   run_compose up -d --build "${DEPLOY_SERVICES[@]}"
 
   SERVICES_CSV="$ERROR_SERVICES" SMOKE_NAME="$SMOKE_NAME" HEALTH_URL="$HEALTH_URL" ./infra/scripts/smoke-post-deploy.sh
@@ -66,6 +80,27 @@ rollback_to_previous_commit() {
   echo "Auto-rollback complete. Returning to original commit $PRE_DEPLOY_COMMIT"
   git checkout "$PRE_DEPLOY_COMMIT"
   return 0
+}
+
+record_success() {
+  mkdir -p "$STATE_DIR"
+
+  local ts commit branch services_csv
+  ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+  commit=$(git rev-parse HEAD)
+  branch=$(git branch --show-current)
+  services_csv=$(IFS=,; echo "${DEPLOY_SERVICES[*]}")
+
+  cat >"$LAST_SUCCESS_FILE" <<EOF
+TIMESTAMP=$ts
+TARGET=$TARGET
+BRANCH=$branch
+COMMIT=$commit
+SERVICES=$services_csv
+HEALTH_URL=$HEALTH_URL
+EOF
+
+  echo "$ts target=$TARGET branch=$branch commit=$commit services=$services_csv" >>"$DEPLOY_HISTORY_FILE"
 }
 
 configure_target
@@ -80,16 +115,16 @@ if [ -n "$(git status --porcelain)" ]; then
 fi
 
 echo "--- Installing dependencies ---"
-pnpm install --frozen-lockfile
+run_pnpm install --frozen-lockfile
 
 echo "--- Building ---"
-pnpm build
+run_pnpm build
 
 echo "--- Typechecking ---"
-pnpm typecheck
+run_pnpm typecheck
 
 echo "--- Running migrations ---"
-pnpm db:migrate
+run_pnpm db:migrate
 
 echo "--- Restarting target services ---"
 run_compose up -d --build "${DEPLOY_SERVICES[@]}"
@@ -108,4 +143,7 @@ if ! SERVICES_CSV="$ERROR_SERVICES" ./infra/scripts/check-errors-window.sh "5m";
   exit 1
 fi
 
+record_success
+
 echo "==> Deploy pipeline complete (target=$TARGET)"
+echo "Saved deploy state: $LAST_SUCCESS_FILE"
