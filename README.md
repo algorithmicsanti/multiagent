@@ -41,8 +41,19 @@ Base funcional en `main` + hardening operativo reciente para poder levantar y ma
   - `infra/scripts/smoke-post-deploy.sh`.
 - Se añadió check de errores recientes (error-budget con filtros por servicio + hard-fail patterns):
   - `infra/scripts/check-errors-window.sh`.
+- Reglas de error-budget externalizadas para tuning sin tocar script:
+  - `infra/config/log-error-budget.rules.sh`
+  - permite ajustar `SERVICES`, `BASE_ERROR_REGEX`, `GLOBAL_IGNORE_REGEX`, `SERVICE_IGNORE_REGEX`, `SERVICE_HARD_FAIL_REGEX`.
 - `deploy-staging.sh` ahora ejecuta smoke test + error-budget y puede intentar auto-rollback (controlado por `AUTO_ROLLBACK_ON_FAIL=1`).
 - Se removió `version:` del compose dev para evitar warning de deprecación en Docker Compose v2.
+
+### Política de ramas operativas (evitar choques con Copilot)
+
+Desde este punto, los cambios operativos/manuales del agente se desarrollan en rama dedicada:
+
+- Rama activa del agente: `chore/ops-hardening-agent`
+- `main` se mantiene como rama de integración estable para evitar colisiones con Copilot/automatizaciones.
+- Flujo recomendado: trabajar en rama dedicada -> PR/review -> merge a `main`. 
 
 ### Estrategia de trabajo en paralelo (para evitar choques)
 

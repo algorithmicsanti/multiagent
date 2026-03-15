@@ -3,25 +3,19 @@ set -euo pipefail
 
 WINDOW="${1:-5m}"
 COMPOSE_FILE="infra/compose/docker-compose.dev.yml"
+RULES_FILE="${RULES_FILE:-infra/config/log-error-budget.rules.sh}"
+
+# Defaults (se sobreescriben desde RULES_FILE si existe)
 SERVICES=(api orchestrator worker-research)
-
-# Patrones base de error
 BASE_ERROR_REGEX='(\b(ERROR|FATAL)\b|UnhandledPromiseRejection|TypeError:|ReferenceError:|PrismaClientKnownRequestError|ERR_[A-Z_]+)'
-# Ruido conocido global
 GLOBAL_IGNORE_REGEX='(DeprecationWarning|ExperimentalWarning|the attribute `version` is obsolete)'
-
-# Filtros por servicio (ajustables)
-# Formato: [service]="regex1|regex2|..."
 declare -A SERVICE_IGNORE_REGEX
-SERVICE_IGNORE_REGEX[api]='request completed|incoming request|Server listening at'
-SERVICE_IGNORE_REGEX[orchestrator]='No active missions found'
-SERVICE_IGNORE_REGEX[worker-research]='Worker-research started|Job completed'
-
-# Si aparece alguno de estos patrones, siempre falla (aunque esté en ignore)
 declare -A SERVICE_HARD_FAIL_REGEX
-SERVICE_HARD_FAIL_REGEX[api]='EADDRINUSE|PrismaClientInitializationError|Cannot find module'
-SERVICE_HARD_FAIL_REGEX[orchestrator]='Queue name cannot contain|PrismaClientInitializationError|Cannot find module|The table `public\.'
-SERVICE_HARD_FAIL_REGEX[worker-research]='Queue name cannot contain|PrismaClientInitializationError|Cannot find module'
+
+if [ -f "$RULES_FILE" ]; then
+  # shellcheck disable=SC1090
+  source "$RULES_FILE"
+fi
 
 run_compose() {
   if docker compose -f "$COMPOSE_FILE" ps >/dev/null 2>&1; then
