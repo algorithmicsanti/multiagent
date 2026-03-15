@@ -1,6 +1,6 @@
-import type { PrismaClient } from "@wm/db";
+import type { Prisma, PrismaClient } from "@wm/db";
 
-export type EventPayload = Record<string, unknown>;
+export type EventPayload = Prisma.InputJsonValue;
 
 export async function logEvent(
   prisma: PrismaClient,

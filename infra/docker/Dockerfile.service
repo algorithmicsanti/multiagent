@@ -9,10 +9,13 @@ COPY packages/db/package.json ./packages/db/
 COPY packages/agent-core/package.json ./packages/agent-core/
 COPY packages/observability/package.json ./packages/observability/
 
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --no-frozen-lockfile
 
 COPY . .
 
 RUN pnpm --filter @wm/db db:generate
+RUN pnpm --filter @wm/db build
+RUN pnpm --filter @wm/agent-core build
+RUN pnpm --filter @wm/observability build
 
 EXPOSE 3000

@@ -49,10 +49,10 @@ export enum ArtifactType {
 }
 
 export const QUEUE_NAMES: Record<AgentType, string> = {
-  [AgentType.ORCHESTRATOR]: "agent:orchestrator",
-  [AgentType.RESEARCH]: "agent:research",
-  [AgentType.FRONTEND]: "agent:frontend",
-  [AgentType.BACKEND]: "agent:backend",
-  [AgentType.DEVOPS]: "agent:devops",
-  [AgentType.PROMPTOPS]: "agent:promptops",
+  [AgentType.ORCHESTRATOR]: "agent-orchestrator",
+  [AgentType.RESEARCH]: "agent-research",
+  [AgentType.FRONTEND]: "agent-frontend",
+  [AgentType.BACKEND]: "agent-backend",
+  [AgentType.DEVOPS]: "agent-devops",
+  [AgentType.PROMPTOPS]: "agent-promptops",
 };
