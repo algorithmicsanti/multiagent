@@ -667,6 +667,40 @@ http://localhost:3000
 
 http://localhost:3001/api/v1/health
 
+Modo sin mock (obligatorio para validacion real)
+
+OpenClaw no debe usar mock-api.mjs cuando el objetivo sea validar el producto real.
+
+Pasos:
+
+1) Levantar backend real en VPS (api + db + redis + orchestrator + worker) con:
+
+pnpm infra:up
+
+pnpm db:migrate
+
+2) Confirmar health real de API:
+
+curl http://localhost:3001/api/v1/health
+
+3) Elegir modo de dashboard:
+
+- Modo VPS: abrir http://<IP_VPS>:3000
+
+- Modo local apuntando a VPS (PowerShell):
+
+$env:NEXT_PUBLIC_API_URL = "http://<IP_VPS>:3001"
+
+npx pnpm --filter @wm/dashboard dev
+
+4) Validar vista de misiones en endpoint real:
+
+http://localhost:3000/missions (modo local)
+
+o
+
+http://<IP_VPS>:3000/missions (modo VPS)
+
 17. Relación entre OpenClaw y el repo principal
 El repo principal contiene
 

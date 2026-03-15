@@ -1911,3 +1911,25 @@ Luego abre:
 2. `deploy:staging` es un flujo distinto de `dev`; no mezclar ambos en la misma validación.
 3. Si el healthcheck falla, revisar primero logs de `api`, `orchestrator` y `worker-research`.
 
+### Modo sin mock (backend real)
+
+Para validar el dashboard contra datos reales, OpenClaw no debe usar `mock-api.mjs`.
+
+1. Levantar backend real en VPS con el flujo anterior (`pnpm infra:up` + `pnpm db:migrate`).
+2. Confirmar health real de API: `curl http://localhost:3001/api/v1/health`.
+3. Elegir una de estas dos formas de ver dashboard:
+
+```bash
+# Opcion A: dashboard ejecutandose en la VPS
+# abrir desde navegador: http://<IP_VPS>:3000
+
+# Opcion B: dashboard ejecutandose en local apuntando a API de la VPS
+# PowerShell (sesion actual)
+$env:NEXT_PUBLIC_API_URL = "http://<IP_VPS>:3001"
+npx pnpm --filter @wm/dashboard dev
+```
+
+4. Verificar que las pantallas cargan sin mock:
+   - `http://localhost:3000/missions` (si corres dashboard local)
+   - `http://<IP_VPS>:3000/missions` (si corres dashboard en VPS)
+
