@@ -1857,3 +1857,57 @@ newgrp docker
 
 Luego reintentar `docker compose ... up -d --build`.
 
+---
+
+## 39. Levantar DEV en VPS con OpenClaw
+
+Esta es la secuencia recomendada para que OpenClaw arranque el entorno de desarrollo en una VPS donde Docker ya existe.
+
+### Flujo operativo (en orden)
+
+```bash
+# 1) Entrar al repo en la VPS
+cd /home/santiago/projects/multiagent
+
+# 2) Instalar dependencias
+pnpm install --frozen-lockfile
+
+# 3) Asegurar variables
+cp -n .env.example .env
+
+# 4) Levantar infraestructura y servicios del stack dev
+pnpm infra:up
+
+# 5) Ejecutar migraciones
+pnpm db:migrate
+
+# 6) Verificar estado y salud
+./infra/scripts/check-services.sh
+pnpm healthcheck
+
+# 7) Revisar logs recientes
+./infra/scripts/check-logs.sh 200
+```
+
+### Cómo ver avances visualmente
+
+1. Dashboard: `http://<IP_VPS>:3000`
+2. API Health: `http://<IP_VPS>:3001/api/v1/health`
+
+Si no quieres exponer puertos públicos, usa túnel SSH desde tu máquina local:
+
+```bash
+ssh -L 3000:localhost:3000 -L 3001:localhost:3001 <usuario>@<IP_VPS>
+```
+
+Luego abre:
+
+1. `http://localhost:3000`
+2. `http://localhost:3001/api/v1/health`
+
+### Notas de operación
+
+1. OpenClaw debe usar scripts existentes del repo antes que comandos improvisados.
+2. `deploy:staging` es un flujo distinto de `dev`; no mezclar ambos en la misma validación.
+3. Si el healthcheck falla, revisar primero logs de `api`, `orchestrator` y `worker-research`.
+
