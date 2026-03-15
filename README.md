@@ -49,9 +49,11 @@ Base funcional en `main` + hardening operativo reciente para poder levantar y ma
   - wrappers npm: `pnpm deploy:full`, `pnpm deploy:backend`, `pnpm deploy:frontend`
   - `deploy-staging.sh` queda como compat wrapper hacia `full`.
 - CI manual de deploy para staging:
-  - `.github/workflows/deploy-staging.yml` (workflow_dispatch con input `target` y ejecución en runner `self-hosted,linux,staging`).
+  - `.github/workflows/deploy-staging.yml` (workflow_dispatch con input `target`, pre-checks de build/typecheck y ejecución en runner `self-hosted,linux,staging`).
 - CI manual de deploy para producción con confirm explícita:
-  - `.github/workflows/deploy-production.yml` (`confirm=DEPLOY_PROD`, runner `self-hosted,linux,production`, `environment: production`).
+  - `.github/workflows/deploy-production.yml` (`confirm=DEPLOY_PROD`, pre-checks de build/typecheck, runner `self-hosted,linux,production`, `environment: production`).
+- CI de predeploy para PR/manual:
+  - `.github/workflows/ci-predeploy.yml`.
 - Runbook operativo del pipeline por target:
   - `docs/runbooks/deploy-pipeline-targets.md`.
 - Estado y trazabilidad de deploy guardados por script:
@@ -60,6 +62,8 @@ Base funcional en `main` + hardening operativo reciente para poder levantar y ma
   - rollback dirigido al último release exitoso: `infra/scripts/rollback-last-success.sh`.
 - Fix de conectividad SSR del dashboard en Docker:
   - `API_INTERNAL_URL=http://api:3001` para llamadas server-side.
+- Guía explícita para levantar DEV en VPS y ver dashboard en tiempo real:
+  - `openclaw.md` sección **16.5 Runbook de levantar DEV en VPS**.
 - Se removió `version:` del compose dev para evitar warning de deprecación en Docker Compose v2.
 
 ### Política de ramas operativas (evitar choques con Copilot)
