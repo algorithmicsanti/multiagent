@@ -39,7 +39,7 @@ Base funcional en `main` + hardening operativo reciente para poder levantar y ma
   - `docs/runbooks/instance-ops-baseline.md`.
 - Se añadió smoke test post-deploy:
   - `infra/scripts/smoke-post-deploy.sh`.
-- Se añadió check de errores recientes (error-budget básico):
+- Se añadió check de errores recientes (error-budget con filtros por servicio + hard-fail patterns):
   - `infra/scripts/check-errors-window.sh`.
 - `deploy-staging.sh` ahora ejecuta smoke test + error-budget y puede intentar auto-rollback (controlado por `AUTO_ROLLBACK_ON_FAIL=1`).
 - Se removió `version:` del compose dev para evitar warning de deprecación en Docker Compose v2.
