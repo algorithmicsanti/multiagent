@@ -19,6 +19,9 @@
     "worker:devops": "echo 'worker-devops not yet implemented'",
     "healthcheck": "bash infra/scripts/healthcheck.sh",
     "deploy:staging": "bash infra/scripts/deploy-staging.sh",
+    "deploy:backend": "bash infra/scripts/deploy-pipeline.sh backend",
+    "deploy:frontend": "bash infra/scripts/deploy-pipeline.sh frontend",
+    "deploy:full": "bash infra/scripts/deploy-pipeline.sh full",
     "deploy:prod": "bash infra/scripts/deploy-prod.sh"
   },
   "devDependencies": {

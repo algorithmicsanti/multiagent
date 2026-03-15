@@ -6,6 +6,8 @@ TIMEOUT_SECONDS="${TIMEOUT_SECONDS:-90}"
 INTERVAL_SECONDS="${INTERVAL_SECONDS:-3}"
 LOG_LINES="${LOG_LINES:-120}"
 COMPOSE_FILE="infra/compose/docker-compose.dev.yml"
+SERVICES_CSV="${SERVICES_CSV:-api,orchestrator,worker-research}"
+SMOKE_NAME="${SMOKE_NAME:-api}"
 
 run_compose() {
   if docker compose -f "$COMPOSE_FILE" ps >/dev/null 2>&1; then
@@ -15,10 +17,13 @@ run_compose() {
   fi
 }
 
+IFS=',' read -r -a SERVICES <<<"$SERVICES_CSV"
+
 start_ts=$(date +%s)
 
-echo "==> Smoke test post-deploy"
+echo "==> Smoke test post-deploy ($SMOKE_NAME)"
 echo "Health URL: $HEALTH_URL"
+echo "Services: ${SERVICES[*]}"
 echo "Timeout: ${TIMEOUT_SECONDS}s"
 
 healthy="0"
@@ -38,16 +43,16 @@ done
 
 if [ "$healthy" != "1" ]; then
   echo "ERROR: Healthcheck failed after ${TIMEOUT_SECONDS}s"
-  run_compose logs --tail="$LOG_LINES" api orchestrator worker-research || true
+  run_compose logs --tail="$LOG_LINES" "${SERVICES[@]}" || true
   exit 1
 fi
 
-echo "OK: API health responded"
+echo "OK: health endpoint responded ($SMOKE_NAME)"
 
 echo "==> Service status"
 run_compose ps
 
 echo "==> Recent logs"
-run_compose logs --tail="$LOG_LINES" api orchestrator worker-research
+run_compose logs --tail="$LOG_LINES" "${SERVICES[@]}"
 
 echo "==> Smoke test complete"

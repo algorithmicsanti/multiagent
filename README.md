@@ -37,14 +37,23 @@ Base funcional en `main` + hardening operativo reciente para poder levantar y ma
   - `GET /api/v1/health` devuelve `status=ok, db=ok, redis=ok`.
 - Se incorporó runbook operativo de instancia:
   - `docs/runbooks/instance-ops-baseline.md`.
-- Se añadió smoke test post-deploy:
+- Se añadió smoke test post-deploy configurable por target:
   - `infra/scripts/smoke-post-deploy.sh`.
 - Se añadió check de errores recientes (error-budget con filtros por servicio + hard-fail patterns):
   - `infra/scripts/check-errors-window.sh`.
 - Reglas de error-budget externalizadas para tuning sin tocar script:
   - `infra/config/log-error-budget.rules.sh`
   - permite ajustar `SERVICES`, `BASE_ERROR_REGEX`, `GLOBAL_IGNORE_REGEX`, `SERVICE_IGNORE_REGEX`, `SERVICE_HARD_FAIL_REGEX`.
-- `deploy-staging.sh` ahora ejecuta smoke test + error-budget y puede intentar auto-rollback (controlado por `AUTO_ROLLBACK_ON_FAIL=1`).
+- Se creó pipeline de deploy unificado por target:
+  - `infra/scripts/deploy-pipeline.sh [full|backend|frontend]`
+  - wrappers npm: `pnpm deploy:full`, `pnpm deploy:backend`, `pnpm deploy:frontend`
+  - `deploy-staging.sh` queda como compat wrapper hacia `full`.
+- CI manual de deploy para staging:
+  - `.github/workflows/deploy-staging.yml` (workflow_dispatch con input `target` y ejecución en runner `self-hosted,linux,staging`).
+- Runbook operativo del pipeline por target:
+  - `docs/runbooks/deploy-pipeline-targets.md`.
+- Fix de conectividad SSR del dashboard en Docker:
+  - `API_INTERNAL_URL=http://api:3001` para llamadas server-side.
 - Se removió `version:` del compose dev para evitar warning de deprecación en Docker Compose v2.
 
 ### Política de ramas operativas (evitar choques con Copilot)

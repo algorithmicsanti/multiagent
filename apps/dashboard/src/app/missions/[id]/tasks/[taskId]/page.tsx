@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+const API_URL = process.env.API_INTERNAL_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
 async function getTaskRuns(taskId: string) {
   const res = await fetch(`${API_URL}/api/v1/tasks/${taskId}/runs`, { cache: "no-store" });
@@ -72,7 +72,7 @@ export default async function TaskDetailPage({
                 </div>
               )}
 
-              {run.outputPayload && (
+              {run.outputPayload != null && (
                 <div>
                   <div style={{ fontSize: 11, color: "var(--text2)", marginBottom: 6 }}>OUTPUT</div>
                   <pre style={{ background: "var(--bg3)", borderRadius: 6, padding: "10px 12px", fontSize: 11, overflow: "auto", maxHeight: 400, color: "var(--text)" }}>

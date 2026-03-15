@@ -4,6 +4,7 @@ set -euo pipefail
 WINDOW="${1:-5m}"
 COMPOSE_FILE="infra/compose/docker-compose.dev.yml"
 RULES_FILE="${RULES_FILE:-infra/config/log-error-budget.rules.sh}"
+SERVICES_CSV="${SERVICES_CSV:-}"
 
 # Defaults (se sobreescriben desde RULES_FILE si existe)
 SERVICES=(api orchestrator worker-research)
@@ -15,6 +16,10 @@ declare -A SERVICE_HARD_FAIL_REGEX
 if [ -f "$RULES_FILE" ]; then
   # shellcheck disable=SC1090
   source "$RULES_FILE"
+fi
+
+if [ -n "$SERVICES_CSV" ]; then
+  IFS=',' read -r -a SERVICES <<<"$SERVICES_CSV"
 fi
 
 run_compose() {

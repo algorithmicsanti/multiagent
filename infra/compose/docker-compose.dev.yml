@@ -95,6 +95,7 @@ services:
     env_file: ../../.env
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:3001
+      API_INTERNAL_URL: http://api:3001
       NODE_ENV: development
     ports:
       - "3000:3000"
