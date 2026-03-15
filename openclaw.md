@@ -613,6 +613,94 @@ proponer causa raíz
 
 sugerir corrección
 
+16.5 Runbook de levantar DEV en VPS
+
+Objetivo
+
+Levantar el entorno de desarrollo completo (dashboard + api + orchestrator + worker + postgres + redis) para inspección y validación funcional.
+
+Pasos
+
+1) Entrar al repo operativo
+
+cd /home/santiago/projects/multiagent
+
+2) Instalar dependencias
+
+pnpm install --frozen-lockfile
+
+3) Preparar variables de entorno
+
+cp -n .env.example .env
+
+4) Levantar stack de desarrollo
+
+pnpm infra:up
+
+5) Ejecutar migraciones
+
+pnpm db:migrate
+
+6) Validar estado y salud
+
+./infra/scripts/check-services.sh
+
+pnpm healthcheck
+
+7) Revisar logs recientes
+
+./infra/scripts/check-logs.sh 200
+
+Verificación visual
+
+Dashboard: http://<IP_VPS>:3000
+
+Health API: http://<IP_VPS>:3001/api/v1/health
+
+Si no se exponen puertos en la VPS, usar túnel SSH:
+
+ssh -L 3000:localhost:3000 -L 3001:localhost:3001 <usuario>@<IP_VPS>
+
+y abrir en local:
+
+http://localhost:3000
+
+http://localhost:3001/api/v1/health
+
+Modo sin mock (obligatorio para validacion real)
+
+OpenClaw no debe usar mock-api.mjs cuando el objetivo sea validar el producto real.
+
+Pasos:
+
+1) Levantar backend real en VPS (api + db + redis + orchestrator + worker) con:
+
+pnpm infra:up
+
+pnpm db:migrate
+
+2) Confirmar health real de API:
+
+curl http://localhost:3001/api/v1/health
+
+3) Elegir modo de dashboard:
+
+- Modo VPS: abrir http://<IP_VPS>:3000
+
+- Modo local apuntando a VPS (PowerShell):
+
+$env:NEXT_PUBLIC_API_URL = "http://<IP_VPS>:3001"
+
+npx pnpm --filter @wm/dashboard dev
+
+4) Validar vista de misiones en endpoint real:
+
+http://localhost:3000/missions (modo local)
+
+o
+
+http://<IP_VPS>:3000/missions (modo VPS)
+
 17. Relación entre OpenClaw y el repo principal
 El repo principal contiene
 
