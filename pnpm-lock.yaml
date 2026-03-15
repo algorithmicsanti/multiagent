@@ -119,6 +119,9 @@ importers:
 
   packages/observability:
     dependencies:
+      '@wm/db':
+        specifier: workspace:*
+        version: link:../db
       pino:
         specifier: ^9.5.0
         version: 9.14.0
