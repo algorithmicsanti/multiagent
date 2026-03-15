@@ -85,5 +85,14 @@ if ! ./infra/scripts/smoke-post-deploy.sh; then
   exit 1
 fi
 
+# 9. Error budget window (logs recientes)
+echo ""
+echo "--- Error budget (logs recientes) ---"
+if ! ./infra/scripts/check-errors-window.sh "5m"; then
+  echo "Deploy error-budget check failed"
+  rollback_to_previous_commit || true
+  exit 1
+fi
+
 echo ""
 echo "==> Staging deploy complete"
