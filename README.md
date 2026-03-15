@@ -56,6 +56,8 @@ Base funcional en `main` + hardening operativo reciente para poder levantar y ma
   - `.github/workflows/ci-predeploy.yml`.
 - Runbook operativo del pipeline por target:
   - `docs/runbooks/deploy-pipeline-targets.md`.
+- Runbook de protección de `main` + checklist de producción:
+  - `docs/runbooks/main-branch-protection-checklist.md`.
 - Estado y trazabilidad de deploy guardados por script:
   - `infra/state/last-successful-deploy.env`
   - `infra/state/deploy-history.log`
