@@ -12,9 +12,11 @@ Este documento cumple dos funciones:
 ---
 
 
-## Estado actual del repositorio (actualizado: 2026-03-14)
+## Estado actual del repositorio (actualizado: 2026-03-15)
 
-Se integró una base funcional importante en `main` (`58edb15`), incluyendo:
+Base funcional en `main` + hardening operativo reciente para poder levantar y mantener la instancia de forma estable.
+
+### Lo ya consolidado
 
 - Monorepo TypeScript con `pnpm workspace` + `turbo`
 - `apps/api` (Fastify + rutas iniciales)
@@ -23,6 +25,22 @@ Se integró una base funcional importante en `main` (`58edb15`), incluyendo:
 - `services/worker-research`
 - `packages/agent-core`, `packages/db` (Prisma), `packages/observability`
 - Infra local (`docker-compose.dev`, Dockerfiles, scripts operativos)
+
+### Avances operativos 2026-03-15 (importante para Copilot)
+
+- Se resolvió el arranque de contenedores que fallaba por módulos workspace no compilados en runtime Docker.
+  - Fix aplicado: build explícito de `@wm/db`, `@wm/agent-core`, `@wm/observability` durante la imagen de `api` y `service`.
+- Se resolvió error de BullMQ por nombre de cola inválido (`Queue name cannot contain :`).
+  - Fix aplicado: colas renombradas de `agent:*` a `agent-*`.
+- Se ajustó tipado en `packages/observability` para compatibilidad Prisma (`InputJsonValue`) y dependencia explícita de `@wm/db`.
+- Se validó health real del stack:
+  - `GET /api/v1/health` devuelve `status=ok, db=ok, redis=ok`.
+- Se incorporó runbook operativo de instancia:
+  - `docs/runbooks/instance-ops-baseline.md`.
+- Se añadió smoke test post-deploy:
+  - `infra/scripts/smoke-post-deploy.sh`.
+- `deploy-staging.sh` ahora ejecuta smoke test y puede intentar auto-rollback (controlado por `AUTO_ROLLBACK_ON_FAIL=1`).
+- Se removió `version:` del compose dev para evitar warning de deprecación en Docker Compose v2.
 
 ### Estrategia de trabajo en paralelo (para evitar choques)
 
