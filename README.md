@@ -68,6 +68,47 @@ Base funcional en `main` + hardening operativo reciente para poder levantar y ma
   - `openclaw.md` sección **16.5 Runbook de levantar DEV en VPS**.
 - Se removió `version:` del compose dev para evitar warning de deprecación en Docker Compose v2.
 
+### Para Copilot / Operación diaria: cómo ver backend + agentes en tiempo real desde dashboard
+
+Objetivo: que cualquier operador (o Copilot) pueda levantar el entorno DEV y observar en vivo el comportamiento de API/orchestrator/workers desde `localhost:3000`.
+
+#### Levantar DEV completo
+```bash
+cd /home/santiago/projects/multiagent
+pnpm install --frozen-lockfile
+cp -n .env.example .env
+pnpm infra:up
+pnpm db:migrate
+```
+
+#### Verificar salud mínima
+```bash
+curl http://localhost:3001/api/v1/health
+./infra/scripts/check-services.sh
+./infra/scripts/check-logs.sh 120
+```
+
+#### Abrir dashboard (tiempo real)
+- Dashboard: `http://localhost:3000/missions`
+- API health: `http://localhost:3001/api/v1/health`
+
+#### Qué observar para confirmar que backend/agentes están trabajando
+1. En dashboard (`/missions`), cambios de estado de misiones/tareas.
+2. En logs de API, requests desde dashboard (`GET /api/v1/missions`, etc.).
+3. En logs de orchestrator, polling/dispatch de trabajo.
+4. En logs de workers, consumo de cola y ejecución (`Job received/completed`).
+
+Comando recomendado para monitoreo en vivo:
+```bash
+docker compose -f infra/compose/docker-compose.dev.yml logs -f api orchestrator worker-research dashboard
+```
+
+Si accedes remoto por SSH, usar túnel:
+```bash
+ssh -L 3000:localhost:3000 -L 3001:localhost:3001 <usuario>@<IP_VPS>
+```
+Luego abrir en tu máquina local `http://localhost:3000/missions`.
+
 ### Política de ramas operativas (evitar choques con Copilot)
 
 Desde este punto, los cambios operativos/manuales del agente se desarrollan en rama dedicada:
