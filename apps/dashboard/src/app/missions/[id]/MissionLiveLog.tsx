@@ -9,7 +9,16 @@ type MissionEvent = {
   payload: Record<string, unknown> | null;
 };
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+function resolveApiUrl(): string {
+  if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL;
+
+  if (typeof window !== "undefined") {
+    const { protocol, hostname } = window.location;
+    return `${protocol}//${hostname}:3001`;
+  }
+
+  return "http://api:3001";
+}
 
 function humanizeEvent(event: MissionEvent | null): string {
   if (!event) return "Sin eventos todavía.";
@@ -53,7 +62,8 @@ export default function MissionLiveLog({ missionId }: { missionId: string }) {
 
     const poll = async () => {
       try {
-        const res = await fetch(`${API_URL}/api/v1/missions/${missionId}/events?limit=100`, {
+        const apiUrl = resolveApiUrl();
+        const res = await fetch(`${apiUrl}/api/v1/missions/${missionId}/events?limit=100`, {
           cache: "no-store",
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
