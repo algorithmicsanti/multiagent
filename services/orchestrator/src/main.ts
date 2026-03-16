@@ -5,6 +5,7 @@ import { logEvent, EVENT_TYPES, createChildLogger } from "@wm/observability";
 import { generateMissionPlan } from "./planner.js";
 import { createQueues, dispatchReadyTasks } from "./dispatcher.js";
 import { checkMissionCompletion } from "./state-machine.js";
+import { notifyMissionStatus } from "./telegram.js";
 
 const log = createChildLogger({ service: "orchestrator" });
 const POLL_INTERVAL_MS = Number(process.env.ORCHESTRATOR_POLL_INTERVAL_MS ?? 10_000);
@@ -41,6 +42,12 @@ async function processMission(missionId: string): Promise<void> {
         eventType: EVENT_TYPES.MISSION_FAILED,
         missionId,
         payload: { missionId, reason: "Planning failed", error: String(err) },
+      });
+      await notifyMissionStatus({
+        missionId,
+        title: mission.title,
+        status: "FAILED",
+        reason: "Planning failed",
       });
       return;
     }

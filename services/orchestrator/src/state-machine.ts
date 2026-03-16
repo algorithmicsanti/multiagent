@@ -1,6 +1,7 @@
 import { prisma } from "@wm/db";
 import { MissionStatus, TaskStatus } from "@wm/agent-core";
 import { logEvent, EVENT_TYPES, createChildLogger } from "@wm/observability";
+import { notifyMissionStatus } from "./telegram.js";
 
 const log = createChildLogger({ service: "orchestrator", module: "state-machine" });
 
@@ -43,6 +44,11 @@ export async function checkMissionCompletion(missionId: string): Promise<void> {
         payload: { missionId, reason: "One or more tasks failed" },
       });
       log.warn({ missionId }, "Mission failed");
+      await notifyMissionStatus({
+        missionId,
+        status: "FAILED",
+        reason: "One or more tasks failed",
+      });
     } else if (allDone && !anyFailed) {
       await prisma.mission.update({
         where: { id: missionId },
@@ -54,6 +60,10 @@ export async function checkMissionCompletion(missionId: string): Promise<void> {
         payload: { missionId },
       });
       log.info({ missionId }, "Mission moved to REVIEWING");
+      await notifyMissionStatus({
+        missionId,
+        status: "REVIEWING",
+      });
     }
   }
 }

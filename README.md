@@ -2176,6 +2176,37 @@ Nota: si los logs muestran `+29 lines` o fragmentos truncados, eso suele ser com
 docker compose -f infra/compose/docker-compose.dev.yml logs -f api orchestrator worker-research dashboard
 ```
 
+### Fix aplicado: `page.tsx:7 fetch failed` en detalle de misión
+
+Causa: las páginas SSR de detalle estaban usando `NEXT_PUBLIC_API_URL` (que en contenedor puede resolver a `localhost` incorrecto).
+
+Fix: usar fallback interno en server-side pages del dashboard:
+
+```ts
+const API_URL = process.env.API_INTERNAL_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+```
+
+Archivos corregidos:
+- `apps/dashboard/src/app/missions/[id]/page.tsx`
+- `apps/dashboard/src/app/missions/[id]/tasks/[taskId]/page.tsx`
+
+### Notificación a Telegram al terminar/fallar misión (orchestrator)
+
+Se agregó notificación automática desde `orchestrator` para estados clave:
+- `FAILED`
+- `REVIEWING`
+
+Variables requeridas en `.env`:
+
+```env
+TELEGRAM_BOT_TOKEN=<token del bot>
+TELEGRAM_CHAT_ID=<chat id destino>
+```
+
+Implementación:
+- `services/orchestrator/src/telegram.ts`
+- hooks en `services/orchestrator/src/main.ts` y `services/orchestrator/src/state-machine.ts`
+
 ### Reintento verificado (2026-03-16 02:27 UTC)
 
 Se repitió la prueba desde cero para validar visibilidad en dashboard y dejar trazabilidad para Copilot:

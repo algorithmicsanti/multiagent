@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+const API_URL = process.env.API_INTERNAL_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
 async function getTaskRuns(taskId: string) {
   const res = await fetch(`${API_URL}/api/v1/tasks/${taskId}/runs`, { cache: "no-store" });
