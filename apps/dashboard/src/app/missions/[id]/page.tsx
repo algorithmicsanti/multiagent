@@ -27,69 +27,53 @@ async function getArtifactContent(id: string) {
   }
 }
 
-function formatHumanResult(content: string | null): { human: string; technical: string | null } {
-  if (!content) return { human: "No summary was provided by the agents.", technical: null };
+function formatHumanResult(content: string | null): string {
+  if (!content) return "No summary was provided by the agents.";
 
   const trimmed = content.trim();
   try {
     const parsed = JSON.parse(trimmed) as Record<string, unknown>;
 
-    const summary =
-      (typeof parsed.executiveSummary === "string" && parsed.executiveSummary) ||
-      (typeof parsed.summary === "string" && parsed.summary) ||
-      "Sin resumen ejecutivo";
+    // We can try to extract clean automation steps from the summary or other places
+    // But since the payload in the screenshot actually has "rawPlan", "summary" and "nextSteps",
+    // We can parse the nextSteps or summary dynamically as human lists.
+    let listContent: string[] = [];
 
-    const recommendation =
-      (typeof parsed.recommendation === "string" && parsed.recommendation) ||
-      "Sin recomendación final";
+    // If there is an explicit topAutomations array as I wrote before
+    if (Array.isArray(parsed.topAutomations)) {
+      listContent = parsed.topAutomations.slice(0, 5).map((item, idx) => {
+        if (typeof item === 'string') return `${idx + 1}. ${item}`;
+        if (item && typeof item === 'object') {
+            const row = item as Record<string, any>;
+            const title = row.name ?? row.automation ?? row.title ?? `Automatización ${idx + 1}`;
+            const steps = row.steps || row.description || row.impact || 'Implementar según análisis sistémico.';
+            return `${idx + 1}. ${title} — ${steps}`;
+        }
+        return `${idx + 1}. Automatización sugerida`;
+      });
+    } else if (Array.isArray(parsed.nextSteps)) {
+      // Like the payload in the screenshot has "nextSteps"
+      listContent = parsed.nextSteps.map((step, idx) => {
+        if (typeof step === 'string') {
+          // Si el next steps trata de automatizaciones de la tabla
+          return `${idx + 1}. ${step.replace(/^"|"$/g, '').trim()}`;
+        }
+        return `${idx + 1}. Paso operativo definido`;
+      });
+    } else if (typeof parsed.summary === 'string') {
+      listContent = [parsed.summary];
+    } else {
+       listContent = ["El pipeline ha finalizado sin datos tabulares explícitos, consulte los artefactos."];
+    }
 
-    const topAutomations = Array.isArray(parsed.topAutomations)
-      ? parsed.topAutomations.slice(0, 5).map((item, idx) => {
-          const fallback = {
-            name: `Automatización ${idx + 1}`,
-            impact: "-",
-            effort: "-",
-            priority: "-",
-          };
+    const summaryStr = typeof parsed.summary === "string" ? parsed.summary + "\n\n" : "";
 
-          if (typeof item === "string") {
-            return { ...fallback, name: item };
-          }
-          if (item && typeof item === "object") {
-            const row = item as Record<string, unknown>;
-            return {
-              name: String(row.name ?? row.automation ?? row.title ?? fallback.name),
-              impact: String(row.impact ?? row.expectedImpact ?? "-"),
-              effort: String(row.effort ?? row.complexity ?? "-"),
-              priority: String(row.priority ?? row.rank ?? "-"),
-            };
-          }
-          return fallback;
-        })
-      : [];
+    return `${summaryStr}${listContent.join("\n")}`;
 
-    const tableHeader = "# | Automatización | Impacto esperado | Esfuerzo | Prioridad";
-    const tableSep = "---|---|---|---|---";
-    const tableRows = topAutomations.map((a, i) => `${i + 1} | ${a.name} | ${a.impact} | ${a.effort} | ${a.priority}`);
-
-    const human = [
-      "Resumen ejecutivo:",
-      summary,
-      "",
-      "Top 5 automatizaciones:",
-      tableHeader,
-      tableSep,
-      ...tableRows,
-      "",
-      "Recomendación final:",
-      recommendation,
-    ].join("\n");
-
-    return { human, technical: JSON.stringify(parsed, null, 2) };
   } catch {
+    // Si no es JSON (si ya es texto/markdown puro)
     const lines = trimmed.split("\n").map((l) => l.trim()).filter(Boolean);
-    const human = lines.slice(0, 12).join("\n");
-    return { human: human || "Resultado disponible", technical: trimmed };
+    return lines.join("\n");
   }
 }
 
@@ -212,32 +196,16 @@ export default async function MissionDetailPage({ params }: { params: Promise<{ 
             </div>
 
             <div style={{ color: "var(--text)", fontSize: 13, lineHeight: 1.7, background: "rgba(0,0,0,0.2)", padding: 16, border: "1px solid var(--border)", marginBottom: 12 }}>
-              <strong style={{ display: "block", marginBottom: 8 }}>Resumen humano</strong>
               <pre style={{ margin: 0, whiteSpace: "pre-wrap", fontFamily: "inherit" }}>
-                {formattedResult.human || eventSummary || "No summary was provided by the agents."}
+                {formattedResult || eventSummary || "No summary was provided by the agents."}
               </pre>
             </div>
-
-            {formattedResult.technical && (
-              <details style={{ marginTop: 10 }}>
-                <summary style={{ cursor: "pointer", color: "var(--accent)" }}>Ver detalles técnicos</summary>
-                <pre style={{ color: "var(--text)", fontSize: 12, lineHeight: 1.5, whiteSpace: "pre-wrap", background: "rgba(0,0,0,0.25)", padding: 12, border: "1px solid var(--border)", fontFamily: "monospace", marginTop: 10 }}>
-                  {formattedResult.technical}
-                </pre>
-              </details>
-            )}
 
             <div style={{ marginTop: "24px", paddingTop: "16px", borderTop: "1px dashed var(--border)", fontSize: "11px", color: "var(--text2)", display: "flex", justifyContent: "space-between" }}>
                  <span>Source artifact: <code>{latestArtifact?.pathOrUrl ?? "Not available"}</code></span>
             </div>
           </div>
         </div>
-      )}
-
-      {isCompleted && (
-        <h3 className="page-title" style={{ fontSize: "14px", marginTop: "0", marginBottom: "20px" }}>
-          TECHNICAL DETAILS
-        </h3>
       )}
 
       <div className="grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "32px", marginBottom: "40px" }}>
