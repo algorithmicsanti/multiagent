@@ -83,7 +83,7 @@ export default function NewMissionPage() {
             <label className="data-label" style={{ marginBottom: "8px", display: "block" }}>CONTEXT & PARAMETERS *</label>
             <textarea
               className="form-textarea"
-              style={{ background: "rgba(15, 23, 42, 0.6)", border: "1px solid var(--border)", color: "#fff", padding: "12px", width: "100%", minHeight: "120px", borderRadius: "2px", fontFamily: "var(--font)" }}
+              style={{ background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text)", padding: "12px", width: "100%", minHeight: "120px", borderRadius: "16px", fontFamily: "inherit" }}
               required
               value={form.description}
               onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
