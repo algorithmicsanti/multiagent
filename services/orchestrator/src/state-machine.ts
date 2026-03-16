@@ -5,6 +5,51 @@ import { notifyMissionStatus } from "./telegram.js";
 
 const log = createChildLogger({ service: "orchestrator", module: "state-machine" });
 
+async function supervisorRetryFailedTasks(missionId: string): Promise<boolean> {
+  const failedTasks = await prisma.task.findMany({
+    where: { missionId, status: TaskStatus.FAILED },
+    select: { id: true, retries: true, maxRetries: true },
+  });
+
+  const retryable = failedTasks.filter((t) => t.retries < t.maxRetries);
+  if (retryable.length === 0) return false;
+
+  for (const task of retryable) {
+    await prisma.task.update({
+      where: { id: task.id },
+      data: {
+        status: TaskStatus.PENDING,
+        retries: task.retries + 1,
+      },
+    });
+
+    await logEvent(prisma, {
+      eventType: "SUPERVISOR_TASK_RETRY",
+      missionId,
+      taskId: task.id,
+      payload: {
+        taskId: task.id,
+        previousRetries: task.retries,
+        maxRetries: task.maxRetries,
+      },
+    });
+  }
+
+  await prisma.mission.update({
+    where: { id: missionId },
+    data: { status: MissionStatus.DISPATCHING },
+  });
+
+  await logEvent(prisma, {
+    eventType: "SUPERVISOR_MISSION_RECOVERED",
+    missionId,
+    payload: { missionId, retriedTasks: retryable.length },
+  });
+
+  log.warn({ missionId, retriedTasks: retryable.length }, "Supervisor re-queued failed tasks");
+  return true;
+}
+
 export async function checkMissionCompletion(missionId: string): Promise<void> {
   const tasks = await prisma.task.findMany({
     where: { missionId },
@@ -34,21 +79,24 @@ export async function checkMissionCompletion(missionId: string): Promise<void> {
     currentStatus === MissionStatus.WAITING_RESULT
   ) {
     if (anyFailed && !anyRunning) {
-      await prisma.mission.update({
-        where: { id: missionId },
-        data: { status: MissionStatus.FAILED },
-      });
-      await logEvent(prisma, {
-        eventType: EVENT_TYPES.MISSION_FAILED,
-        missionId,
-        payload: { missionId, reason: "One or more tasks failed" },
-      });
-      log.warn({ missionId }, "Mission failed");
-      await notifyMissionStatus({
-        missionId,
-        status: "FAILED",
-        reason: "One or more tasks failed",
-      });
+      const recovered = await supervisorRetryFailedTasks(missionId);
+      if (!recovered) {
+        await prisma.mission.update({
+          where: { id: missionId },
+          data: { status: MissionStatus.FAILED },
+        });
+        await logEvent(prisma, {
+          eventType: EVENT_TYPES.MISSION_FAILED,
+          missionId,
+          payload: { missionId, reason: "One or more tasks failed" },
+        });
+        log.warn({ missionId }, "Mission failed");
+        await notifyMissionStatus({
+          missionId,
+          status: "FAILED",
+          reason: "One or more tasks failed",
+        });
+      }
     } else if (allDone && !anyFailed) {
       await prisma.mission.update({
         where: { id: missionId },
@@ -85,21 +133,24 @@ export async function checkMissionCompletion(missionId: string): Promise<void> {
         status: "DONE",
       });
     } else if (anyFailed && !anyRunning) {
-      await prisma.mission.update({
-        where: { id: missionId },
-        data: { status: MissionStatus.FAILED },
-      });
-      await logEvent(prisma, {
-        eventType: EVENT_TYPES.MISSION_FAILED,
-        missionId,
-        payload: { missionId, reason: "Failure detected during reviewing" },
-      });
-      log.warn({ missionId }, "Mission failed during REVIEWING");
-      await notifyMissionStatus({
-        missionId,
-        status: "FAILED",
-        reason: "Failure detected during reviewing",
-      });
+      const recovered = await supervisorRetryFailedTasks(missionId);
+      if (!recovered) {
+        await prisma.mission.update({
+          where: { id: missionId },
+          data: { status: MissionStatus.FAILED },
+        });
+        await logEvent(prisma, {
+          eventType: EVENT_TYPES.MISSION_FAILED,
+          missionId,
+          payload: { missionId, reason: "Failure detected during reviewing" },
+        });
+        log.warn({ missionId }, "Mission failed during REVIEWING");
+        await notifyMissionStatus({
+          missionId,
+          status: "FAILED",
+          reason: "Failure detected during reviewing",
+        });
+      }
     }
   }
 }
