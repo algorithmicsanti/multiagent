@@ -109,6 +109,63 @@ ssh -L 3000:localhost:3000 -L 3001:localhost:3001 <usuario>@<IP_VPS>
 ```
 Luego abrir en tu máquina local `http://localhost:3000/missions`.
 
+#### Runbook exacto para OpenClaw: pasar de mock a real (sin ambigüedad)
+
+Este bloque es el procedimiento operativo que OpenClaw debe ejecutar en terminal para dejar de usar `mock-api.mjs` y operar contra el stack real.
+
+Precondiciones:
+- Docker y Docker Compose disponibles en la VPS.
+- Repositorio en `/home/santiago/projects/multiagent`.
+- `.env` creado desde `.env.example` con `ANTHROPIC_API_KEY` real.
+
+Comandos (copiar/pegar en este orden):
+```bash
+cd /home/santiago/projects/multiagent
+
+# 1) Asegurar dependencias
+pnpm install --frozen-lockfile
+
+# 2) Preparar entorno (si falta)
+cp -n .env.example .env
+
+# 3) DETENER cualquier mock activo
+pkill -f "node mock-api.mjs" || true
+
+# 4) Levantar infraestructura real
+pnpm infra:up
+
+# 5) Ejecutar migraciones
+pnpm db:migrate
+
+# 6) Verificar salud del backend real
+pnpm healthcheck
+curl -s http://localhost:3001/api/v1/health
+
+# 7) Verificar que orquestador y worker están vivos
+./infra/scripts/check-services.sh
+./infra/scripts/check-logs.sh 120
+
+# 8) Monitoreo en vivo (api + orchestrator + worker + dashboard)
+pnpm infra:logs
+```
+
+Validación funcional obligatoria (sin mock):
+1. Abrir `http://localhost:3000/missions`.
+2. Crear una misión nueva desde el dashboard.
+3. Confirmar transición de estado (`NEW` -> `PLANNING` -> `DISPATCHING/RUNNING`).
+4. Confirmar en logs de worker mensajes tipo `Job received` y `Job completed`.
+
+Si algo falla, OpenClaw debe ejecutar este diagnóstico mínimo:
+```bash
+./infra/scripts/check-services.sh
+./infra/scripts/check-logs.sh 200
+docker compose -f infra/compose/docker-compose.dev.yml logs --tail=200 api orchestrator worker-research
+```
+
+Regla operativa:
+- `mock-api.mjs` solo se usa para demos locales sin Docker.
+- En VPS con Docker, el modo correcto es siempre `pnpm infra:up` + `pnpm db:migrate`.
+
 ### Política de ramas operativas (evitar choques con Copilot)
 
 Desde este punto, los cambios operativos/manuales del agente se desarrollan en rama dedicada:
