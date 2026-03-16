@@ -1,7 +1,6 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
 
-const API_URL = process.env.API_INTERNAL_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
 async function getTaskRuns(taskId: string) {
   const res = await fetch(`${API_URL}/api/v1/tasks/${taskId}/runs`, { cache: "no-store" });
@@ -18,72 +17,92 @@ export default async function TaskDetailPage({
   const runs = await getTaskRuns(taskId);
 
   return (
-    <div>
+    <div className="main-content">
       <div className="page-header">
         <div>
-          <div style={{ marginBottom: 4, fontSize: 13 }}>
-            <Link href="/missions" style={{ color: "var(--text2)", textDecoration: "none" }}>Missions</Link>
-            <span style={{ color: "var(--text2)", margin: "0 6px" }}>/</span>
-            <Link href={`/missions/${id}`} style={{ color: "var(--text2)", textDecoration: "none" }}>Mission</Link>
-            <span style={{ color: "var(--text2)", margin: "0 6px" }}>/</span>
-            <span>Task Runs</span>
+          <div style={{ marginBottom: 8, display: "flex", alignItems: "center", gap: "8px", fontSize: 11, letterSpacing: 1, textTransform: "uppercase" }}>
+            <Link href="/missions" style={{ textDecoration: "none", color: "var(--text2)" }}>NETWORK</Link>
+            <span style={{ color: "var(--text2)" }}>/</span>
+            <Link href={`/missions/${id}`} style={{ textDecoration: "none", color: "var(--text2)" }}>NODE: {id.substring(0, 8)}</Link>
+            <span style={{ color: "var(--accent)" }}>/</span>
+            <span style={{ color: "var(--accent)", fontWeight: 600 }}>TASK TRACE</span>
           </div>
-          <h1 className="page-title">Task Runs</h1>
+          <h1 className="page-title">Agent Trace Logs</h1>
         </div>
       </div>
 
-      {runs.length === 0 ? (
-        <div className="card">
+      <div className="agent-status-banner" style={{ background: "rgba(0, 0, 0, 0.4)", borderLeftColor: "var(--text2)", color: "var(--text2)" }}>
+        <span><strong>Trace Explorer:</strong> Examining execution instances for task <span style={{ color: "var(--accent)" }}>{taskId}</span></span>
+      </div>
+
+      <div className="diagram-canvas">
+        {runs.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-state-title">No runs yet</div>
+            <p>NO EXECUTION CYCLES LOGGED FOR THIS TASK YET.</p>
           </div>
-        </div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {runs.map((run: {
-            id: string;
-            status: string;
-            workerName: string;
-            startedAt: string;
-            finishedAt?: string;
-            durationMs?: number;
-            tokensUsed?: number;
-            costUsd?: string;
-            errorMessage?: string;
-            outputPayload?: unknown;
-          }) => (
-            <div key={run.id} className="card">
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                  <span className={`badge badge-${run.status}`}>{run.status}</span>
-                  <span style={{ fontSize: 12, color: "var(--text2)" }}>{run.workerName}</span>
-                </div>
-                <div style={{ fontSize: 11, color: "var(--text2)" }}>
-                  {new Date(run.startedAt).toLocaleString()}
-                  {run.durationMs && ` • ${(run.durationMs / 1000).toFixed(1)}s`}
-                  {run.tokensUsed && ` • ${run.tokensUsed} tokens`}
-                  {run.costUsd && ` • $${Number(run.costUsd).toFixed(4)}`}
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+            {runs.map((run: {
+              id: string;
+              status: string;
+              workerName: string;
+              startedAt: string;
+              finishedAt?: string;
+              durationMs?: number;
+              tokensUsed?: number;
+              costUsd?: string;
+              errorMessage?: string;
+              outputPayload?: unknown;
+            }, i: number) => (
+              <div key={run.id} style={{ position: "relative" }}>
+                {i > 0 && <div className="connection-line vertical" style={{ height: "32px", top: "-32px", left: "20px" }}></div>}
+                <div className="isometric-card" style={{ borderColor: run.status === "FAILED" ? "var(--red)" : "var(--accent)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, borderBottom: "1px solid rgba(255,255,255,0.05)", paddingBottom: 16 }}>
+                    <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+                      <span className={`badge badge-${run.status.toLowerCase()}`}>{run.status}</span>
+                      <span style={{ fontSize: 13, color: "#fff", fontWeight: 600, letterSpacing: 1 }}>{run.workerName}</span>
+                    </div>
+                    <div style={{ fontSize: 11, color: "var(--text2)", textAlign: "right" }}>
+                      TRACED: {new Date(run.startedAt).toLocaleString()}
+                      {run.durationMs && <div>TIME: {(run.durationMs / 1000).toFixed(1)}s</div>}
+                    </div>
+                  </div>
+
+                  <div className="grid-2" style={{ display: "flex", gap: 32, marginBottom: 16 }}>
+                    {run.tokensUsed != null && (
+                      <div className="data-row">
+                        <span className="data-label">LLM TOKENS:</span>
+                        <span className="data-value">{run.tokensUsed}</span>
+                      </div>
+                    )}
+                    {run.costUsd != null && (
+                      <div className="data-row">
+                        <span className="data-label">COMPUTE COST:</span>
+                        <span className="data-value">${Number(run.costUsd).toFixed(4)}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {run.errorMessage && (
+                    <div style={{ background: "rgba(255, 51, 102, 0.1)", border: "1px dashed var(--red)", borderRadius: "2px", padding: "12px", fontSize: 11, color: "var(--red)", marginBottom: 16, fontFamily: "monospace" }}>
+                      [FATAL ERROR] {run.errorMessage}
+                    </div>
+                  )}
+
+                  {run.outputPayload != null && (
+                    <div>
+                      <div className="data-label" style={{ marginBottom: 8 }}>ARTIFACT OUTPUT:</div>
+                      <pre style={{ background: "rgba(0, 0, 0, 0.4)", border: "1px solid var(--border)", borderRadius: "2px", padding: "16px", fontSize: 11, overflowX: "auto", maxHeight: 400, color: "var(--text)", borderLeft: "2px solid var(--accent)" }}>
+                        {JSON.stringify(run.outputPayload, null, 2)}
+                      </pre>
+                    </div>
+                  )}
                 </div>
               </div>
-
-              {run.errorMessage && (
-                <div style={{ background: "#3a1a1a", borderRadius: 6, padding: "8px 12px", fontSize: 12, color: "#f87171", marginBottom: 12 }}>
-                  {run.errorMessage}
-                </div>
-              )}
-
-              {run.outputPayload != null && (
-                <div>
-                  <div style={{ fontSize: 11, color: "var(--text2)", marginBottom: 6 }}>OUTPUT</div>
-                  <pre style={{ background: "var(--bg3)", borderRadius: 6, padding: "10px 12px", fontSize: 11, overflow: "auto", maxHeight: 400, color: "var(--text)" }}>
-                    {JSON.stringify(run.outputPayload, null, 2)}
-                  </pre>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
