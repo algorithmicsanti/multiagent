@@ -118,11 +118,6 @@ export default async function MissionDetailPage({ params }: { params: Promise<{ 
 
       <MissionLiveLog missionId={mission.id} />
 
-      <div className="agent-status-banner">
-        <div className="pulse"></div>
-        <span><strong>SysInfo:</strong> Detailed telemetry for Node ID [{mission.id}]</span>
-      </div>
-
       {isCompleted && (
         <h3 className="page-title" style={{ fontSize: "14px", marginTop: "0", marginBottom: "20px" }}>
           TECHNICAL DETAILS
@@ -132,7 +127,7 @@ export default async function MissionDetailPage({ params }: { params: Promise<{ 
       <div className="grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "32px", marginBottom: "40px" }}>
         <div className="isometric-card" style={{ height: "100%" }}>
           <h3 className="card-title" style={{ color: "var(--accent)", borderBottom: "1px solid var(--border)", paddingBottom: "12px", marginBottom: "16px" }}>MISSION DIRECTIVE</h3>
-          <p style={{ fontSize: 13, color: "var(--text)", marginBottom: 20, fontStyle: "italic" }}>"{mission.description}"</p>
+          <p style={{ fontSize: 13, color: "var(--text)", marginBottom: 20, fontStyle: "italic" }}>&quot;{mission.description}&quot;</p>
           
           <div className="card-details" style={{ display: "block", marginTop: 0, paddingTop: 16, borderTop: "1px dashed var(--border)" }}>
             <div className="data-row">

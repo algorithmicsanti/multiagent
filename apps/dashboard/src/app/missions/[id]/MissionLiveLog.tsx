@@ -10,14 +10,25 @@ type MissionEvent = {
 };
 
 function resolveApiUrl(): string {
-  if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL;
+  const configured = process.env.NEXT_PUBLIC_API_URL;
 
   if (typeof window !== "undefined") {
     const { protocol, hostname } = window.location;
-    return `${protocol}//${hostname}:3001`;
+    const runtimeUrl = `${protocol}//${hostname}:3001`;
+
+    if (!configured) return runtimeUrl;
+
+    try {
+      const parsed = new URL(configured);
+      const hostIsLocal = parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1";
+      if (hostIsLocal) return runtimeUrl;
+      return configured;
+    } catch {
+      return runtimeUrl;
+    }
   }
 
-  return "http://api:3001";
+  return configured ?? "http://api:3001";
 }
 
 function humanizeEvent(event: MissionEvent | null): string {
