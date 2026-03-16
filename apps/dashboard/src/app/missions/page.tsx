@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { ResetMissionsButton } from "./ResetMissionsButton";
+import { formatDateTimeCDMX } from "../lib/datetime";
 
-const API_URL = process.env.API_INTERNAL_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+const API_URL = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 interface Mission {
   id: string;
@@ -16,18 +17,20 @@ interface Mission {
 async function getMissions(status?: string) {
   const url = new URL(`${API_URL}/api/v1/missions`);
   if (status) url.searchParams.set("status", status);
-  const res = await fetch(url.toString(), { cache: "no-store" });
-  if (!res.ok) return { data: [], pagination: { total: 0 } };
-  return res.json();
+  try {
+    const res = await fetch(url.toString(), { cache: "no-store" });
+    if (!res.ok) return { data: [], pagination: { total: 0 } };
+    return res.json();
+  } catch (e) {
+    console.error("Fail fetching API:", e);
+    return { data: [], pagination: { total: 0 } };
+  }
 }
 
 const FLOW_STEPS = ["NEW", "PLANNING", "DISPATCHING", "RUNNING", "REVIEWING", "DONE"];
 
 function getFlowProgress(status: string) {
   const normalized = status.toUpperCase();
-  if (normalized === "WAITING_APPROVAL") {
-    return { currentStep: "WAITING APPROVAL", completedIndex: 3 };
-  }
   if (normalized === "FAILED" || normalized === "CANCELLED") {
     return { currentStep: normalized, completedIndex: FLOW_STEPS.indexOf("RUNNING") };
   }
@@ -40,15 +43,14 @@ function getFlowProgress(status: string) {
   return { currentStep: normalized, completedIndex: 0 };
 }
 
-export default async function MissionsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ status?: string }>;
-}) {
-  const params = await searchParams;
-  const { data: missions } = await getMissions(params.status);
+export default async function MissionsPage() {
+  const { data: missions } = await getMissions();
 
-  const statuses = ["NEW", "PLANNING", "DISPATCHING", "RUNNING", "REVIEWING", "WAITING_APPROVAL", "DONE", "FAILED"];
+  const sortedMissions = [...(missions || [])].sort((a, b) => {
+    const timeA = new Date(a.createdAt).getTime();
+    const timeB = new Date(b.createdAt).getTime();
+    return timeB - timeA;
+  });
 
   return (
     <div className="main-content">
@@ -62,32 +64,14 @@ export default async function MissionsPage({
         </div>
       </div>
 
-      <div className="agent-status-banner">
-        <div className="pulse"></div>
-        <span><strong>Web Mentor OS:</strong> Scanning network for active assignments and tasks...</span>
-      </div>
-
-      <div className="filters">
-        <Link href="/missions" className={`filter-btn ${!params.status ? "active" : ""}`}>ALL MISSIONS</Link>
-        {statuses.map((s) => (
-          <Link
-            key={s}
-            href={`/missions?status=${s}`}
-            className={`filter-btn ${params.status === s ? "active" : ""}`}
-          >
-            {s.replace('_', ' ')}
-          </Link>
-        ))}
-      </div>
-
       <div className="diagram-canvas">
-        {missions.length === 0 ? (
+        {sortedMissions.length === 0 ? (
           <div className="empty-state">
             <p>No active missions found in the system.</p>
           </div>
         ) : (
           <div className="missions-flow">
-            {(missions as Mission[]).map((m) => {
+            {sortedMissions.map((m) => {
               const badgeClass = `badge-${m.status.toLowerCase()}`;
               const flow = getFlowProgress(m.status);
               
@@ -108,7 +92,7 @@ export default async function MissionsPage({
                       <div className="card-details">
                         <div className="data-row">
                           <span className="data-label">CREATED:</span>
-                          <span className="data-value">{new Date(m.createdAt).toLocaleString()}</span>
+                          <span className="data-value">{formatDateTimeCDMX(m.createdAt)}</span>
                         </div>
 
                         <div className="hover-flow">

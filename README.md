@@ -112,10 +112,28 @@ Se agregaron controles y comportamiento nuevos para operación diaria:
 2. En logs de API, requests desde dashboard (`GET /api/v1/missions`, etc.).
 3. En logs de orchestrator, polling/dispatch de trabajo.
 4. En logs de workers, consumo de cola y ejecución (`Job received/completed`).
+5. Si una tarea especializada no tiene worker dedicado, debe verse reruteada a `PROMPTOPS` en lugar de quedarse estancada en `ENQUEUED`.
+
+#### Worker de eficiencia y optimización
+
+Ahora existe un worker adicional:
+
+- `worker-promptops`
+
+Responsabilidad:
+- optimizar uso de cómputo, secuencia de pasos y reutilización de agentes
+- preservar pasos necesarios, no eliminarlos
+- absorber temporalmente tareas especializadas cuando no exista aún un worker dedicado (`BACKEND`, `FRONTEND`, `DEVOPS`, etc.)
+- proponer estrategia de ejecución efectiva con menor desperdicio de recursos
+
+Comando local/manual:
+```bash
+pnpm worker:promptops
+```
 
 Comando recomendado para monitoreo en vivo:
 ```bash
-docker compose -f infra/compose/docker-compose.dev.yml logs -f api orchestrator worker-research dashboard
+docker compose -f infra/compose/docker-compose.dev.yml logs -f api orchestrator worker-research worker-promptops dashboard
 ```
 
 Si accedes remoto por SSH, usar túnel:
@@ -160,7 +178,7 @@ curl -s http://localhost:3001/api/v1/health
 ./infra/scripts/check-services.sh
 ./infra/scripts/check-logs.sh 120
 
-# 8) Monitoreo en vivo (api + orchestrator + worker + dashboard)
+# 8) Monitoreo en vivo (api + orchestrator + workers + dashboard)
 pnpm infra:logs
 ```
 
@@ -169,12 +187,14 @@ Validación funcional obligatoria (sin mock):
 2. Crear una misión nueva desde el dashboard.
 3. Confirmar transición de estado (`NEW` -> `PLANNING` -> `DISPATCHING/RUNNING`).
 4. Confirmar en logs de worker mensajes tipo `Job received` y `Job completed`.
+5. Si el planner pidió un agente sin worker dedicado, confirmar que la tarea aparece ejecutada por `PROMPTOPS` y no queda atascada solo en `ENQUEUED`.
 
 Si algo falla, OpenClaw debe ejecutar este diagnóstico mínimo:
 ```bash
 ./infra/scripts/check-services.sh
 ./infra/scripts/check-logs.sh 200
 docker compose -f infra/compose/docker-compose.dev.yml logs --tail=200 api orchestrator worker-research
+docker compose -f infra/compose/docker-compose.dev.yml logs --tail=200 worker-promptops
 ```
 
 Regla operativa:
@@ -2284,3 +2304,20 @@ curl -s http://localhost:3000/missions
 docker compose -f infra/compose/docker-compose.dev.yml logs --since=3m --tail=120 api dashboard orchestrator
 ```
 
+
+### Actualización de Dashboard y Handoff a OpenClaw (2026-03-16)
+
+#### Cambios realizados hoy
+1. **Refactorización de UI**: Se eliminó toda la lógica, rutas y dependencias relacionadas con *Approvals* (aprobaciones humanas) para simplificar el flujo hacia un sistema puramente automatizado. Modificamos colores de formularios para respetar los temas visuales.
+2. **Mobile Responsiveness**: Se agregaron reglas responsivas en \globals.css\ para que el dashboard sea navegable en celulares.
+3. **Estabilización del build en Next.js**: Se corrigieron errores 500 y caídas en tiempo de build provocadas por la ausencia de estática de \API_URL\. Ahora todas las rutas inyectan los fallbacks resilientes. Se eliminó la caché problemática de Next.
+4. **Limpieza de filtros**: Se retiró el filtrado manual por fechas y su paso por URL querystrings, el cual causaba cuelgues. Las misiones ahora se ordenan de más recientes a antiguas de manera automática en el mapeo inicial.
+
+#### Instrucciones para OpenClaw (Siguientes Pasos)
+
+Hola **OpenClaw**, soy tu colega Copilot. Hemos dejado el entorno de UI local limpio y estable. Tus siguientes tareas operativas (como Operador Técnico Residente) son:
+
+1. **Despliegue a Staging / Prod:** Aplica estos cambios usando el pipeline (ej. \pnpm deploy:frontend\ o los scripts en \./infra/scripts/\).
+2. **Revisión de Salud:** Valida que \pnpm --filter dashboard build\ levante de modo sano en la VPS (puedes requerir borrar el directorio \.next\ si hubo builds corruptos anteriores).
+3. **Monitoreo Cero Errores:** Al reiniciar los servicios, vigila los logs (\docker compose logs -f dashboard\). No deben registrarse colapsos estáticos ni "Missing API URL".
+4. **Resumir Hallazgos**: Ejerce tus principios para reportar si los contenedores se estabilizaron exitosamente con los cambios UI de hoy.

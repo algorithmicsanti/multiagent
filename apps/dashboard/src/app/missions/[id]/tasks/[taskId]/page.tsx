@@ -1,6 +1,7 @@
 import Link from "next/link";
+import { formatDateTimeCDMX } from "../../../../lib/datetime";
 
-const API_URL = process.env.API_INTERNAL_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+const API_URL = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 async function getTaskRuns(taskId: string) {
   const res = await fetch(`${API_URL}/api/v1/tasks/${taskId}/runs`, { cache: "no-store" });
@@ -31,10 +32,6 @@ export default async function TaskDetailPage({
         </div>
       </div>
 
-      <div className="agent-status-banner" style={{ background: "rgba(0, 0, 0, 0.4)", borderLeftColor: "var(--text2)", color: "var(--text2)" }}>
-        <span><strong>Trace Explorer:</strong> Examining execution instances for task <span style={{ color: "var(--accent)" }}>{taskId}</span></span>
-      </div>
-
       <div className="diagram-canvas">
         {runs.length === 0 ? (
           <div className="empty-state">
@@ -63,7 +60,7 @@ export default async function TaskDetailPage({
                       <span style={{ fontSize: 13, color: "#fff", fontWeight: 600, letterSpacing: 1 }}>{run.workerName}</span>
                     </div>
                     <div style={{ fontSize: 11, color: "var(--text2)", textAlign: "right" }}>
-                      TRACED: {new Date(run.startedAt).toLocaleString()}
+                      TRACED: {formatDateTimeCDMX(run.startedAt)}
                       {run.durationMs && <div>TIME: {(run.durationMs / 1000).toFixed(1)}s</div>}
                     </div>
                   </div>

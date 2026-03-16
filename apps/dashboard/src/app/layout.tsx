@@ -12,12 +12,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         <nav className="navbar">
-          <div className="navbar-brand">
-            <span className="brand-icon">⬢</span> WM_AGENT_OS
-          </div>
+          <a href="/missions" className="navbar-brand" style={{ textDecoration: "none", color: "inherit" }}>
+            <span className="brand-icon">⬢</span> Web Mentor Agents
+          </a>
           <div className="navbar-links">
-            <a href="/missions">MISSIONS</a>
-            <a href="/approvals">APPROVALS</a>
           </div>
           <HealthIndicators />
         </nav>

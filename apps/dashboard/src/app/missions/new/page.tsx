@@ -3,11 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
-
-if (!API_URL) {
-  throw new Error("Missing NEXT_PUBLIC_API_URL for dashboard client requests.");
-}
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 export default function NewMissionPage() {
   const router = useRouter();
@@ -59,11 +55,6 @@ export default function NewMissionPage() {
         <h1 className="page-title">Deploy New Mission</h1>
       </div>
 
-      <div className="agent-status-banner">
-        <div className="pulse"></div>
-        <span><strong>Orchestrator:</strong> Awaiting parameters to initialize a new multi-agent sequence...</span>
-      </div>
-
       <div className="isometric-card">
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
           {error && (
@@ -76,7 +67,7 @@ export default function NewMissionPage() {
             <label className="data-label" style={{ marginBottom: "8px", display: "block" }}>MISSION TITLE / DIRECTIVE *</label>
             <input
               className="form-input"
-              style={{ background: "rgba(15, 23, 42, 0.6)", border: "1px solid var(--border)", color: "#fff", padding: "12px", width: "100%", borderRadius: "2px", fontFamily: "var(--font)" }}
+              style={{ background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text)", padding: "12px", width: "100%", borderRadius: "var(--radius-sm)", fontFamily: "inherit" }}
               required
               value={form.title}
               onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
@@ -88,7 +79,7 @@ export default function NewMissionPage() {
             <label className="data-label" style={{ marginBottom: "8px", display: "block" }}>CONTEXT & PARAMETERS *</label>
             <textarea
               className="form-textarea"
-              style={{ background: "rgba(15, 23, 42, 0.6)", border: "1px solid var(--border)", color: "#fff", padding: "12px", width: "100%", minHeight: "120px", borderRadius: "2px", fontFamily: "var(--font)" }}
+              style={{ background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text)", padding: "12px", width: "100%", minHeight: "120px", borderRadius: "16px", fontFamily: "inherit" }}
               required
               value={form.description}
               onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
@@ -113,7 +104,7 @@ export default function NewMissionPage() {
               <label className="data-label" style={{ marginBottom: "8px", display: "block" }}>MAX BUDGET (USD)</label>
               <input
                 className="form-input"
-                style={{ background: "rgba(15, 23, 42, 0.6)", border: "1px solid var(--border)", color: "#fff", padding: "12px", width: "100%", borderRadius: "2px", fontFamily: "var(--font)" }}
+                style={{ background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text)", padding: "12px", width: "100%", borderRadius: "var(--radius-sm)", fontFamily: "inherit" }}
                 type="number"
                 step="0.01"
                 min="0"

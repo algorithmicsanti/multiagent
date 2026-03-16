@@ -13,12 +13,34 @@ import { randomUUID } from "crypto";
 
 const log = createChildLogger({ service: "orchestrator", module: "dispatcher" });
 
+function resolveExecutionAgentType(task: {
+  agentType: string;
+  metadata: unknown;
+}, queues: Record<string, Queue>): AgentType {
+  const metadata = task.metadata && typeof task.metadata === "object"
+    ? task.metadata as Record<string, unknown>
+    : null;
+
+  const metadataExecutionType = metadata?.executionAgentType;
+  if (typeof metadataExecutionType === "string" && metadataExecutionType in AgentType) {
+    return metadataExecutionType as AgentType;
+  }
+
+  const directAgentType = task.agentType as AgentType;
+  const directQueue = queues[QUEUE_NAMES[directAgentType]];
+  if (directQueue) {
+    return directAgentType;
+  }
+
+  return AgentType.PROMPTOPS;
+}
+
 export function createQueues(redis: Redis): Record<string, Queue> {
   const queues: Record<string, Queue> = {};
   for (const agentType of Object.values(AgentType)) {
     const queueName = QUEUE_NAMES[agentType];
     if (queueName && agentType !== AgentType.ORCHESTRATOR) {
-      queues[queueName] = new Queue(queueName, { connection: redis });
+      queues[queueName] = new Queue(queueName, { connection: redis as never });
     }
   }
   return queues;
@@ -40,13 +62,13 @@ export async function dispatchReadyTasks(
         where: { missionId, status: "COMPLETED" },
         select: { id: true },
       })
-    ).map((t) => t.id)
+    ).map((t: { id: string }) => t.id)
   );
 
   let dispatched = 0;
 
   for (const task of pendingTasks) {
-    const depsOk = task.dependsOn.every((depId) => completedTaskIds.has(depId));
+    const depsOk = task.dependsOn.every((depId: string) => completedTaskIds.has(depId));
     if (!depsOk) continue;
 
     const runId = randomUUID();
@@ -65,23 +87,35 @@ export async function dispatchReadyTasks(
     const mission = await prisma.mission.findUnique({ where: { id: missionId } });
     if (!mission) continue;
 
+    const executionAgentType = resolveExecutionAgentType(task, queues);
+
     const payload: AgentJobPayload = {
       jobId: randomUUID(),
       taskId: task.id,
       missionId,
-      agentType: task.agentType as AgentType,
+      agentType: executionAgentType,
       runId,
       instructions: task.instructions,
       context: {
         missionTitle: mission.title,
         missionDescription: mission.description,
-        previousArtifacts: artifacts.map((a) => ({
+        previousArtifacts: artifacts.map((a: {
+          id: string;
+          artifactType: string;
+          pathOrUrl: string;
+          metadata: unknown;
+        }) => ({
           id: a.id,
           artifactType: a.artifactType,
           pathOrUrl: a.pathOrUrl,
           metadata: (a.metadata as Record<string, unknown>) ?? undefined,
         })),
-        completedTaskSummaries: completedTasks.map((t) => ({
+        completedTaskSummaries: completedTasks.map((t: {
+          id: string;
+          title: string;
+          agentType: string;
+          runs: Array<{ outputPayload: unknown }>; 
+        }) => ({
           taskId: t.id,
           title: t.title,
           agentType: t.agentType as AgentType,
@@ -96,7 +130,7 @@ export async function dispatchReadyTasks(
       data: {
         id: runId,
         taskId: task.id,
-        workerName: `worker-${task.agentType.toLowerCase()}`,
+        workerName: `worker-${executionAgentType.toLowerCase()}`,
         inputPayload: payload as unknown as Record<string, unknown>,
         status: "enqueued",
       },
@@ -109,23 +143,28 @@ export async function dispatchReadyTasks(
     });
 
     // Enqueue to BullMQ
-    const queueName = QUEUE_NAMES[task.agentType as AgentType];
+    const queueName = QUEUE_NAMES[executionAgentType];
     const queue = queues[queueName];
     if (!queue) {
-      log.error({ agentType: task.agentType }, "No queue found for agent type");
+      log.error({ agentType: task.agentType, executionAgentType }, "No queue found for agent type");
       continue;
     }
 
-    await queue.add(task.agentType, payload, BULLMQ_DEFAULT_JOB_OPTIONS);
+    await queue.add(executionAgentType, payload, BULLMQ_DEFAULT_JOB_OPTIONS);
 
     await logEvent(prisma, {
       eventType: EVENT_TYPES.TASK_ENQUEUED,
       missionId,
       taskId: task.id,
-      payload: { taskId: task.id, agentType: task.agentType, runId },
+      payload: {
+        taskId: task.id,
+        requestedAgentType: task.agentType,
+        executionAgentType,
+        runId,
+      },
     });
 
-    log.info({ taskId: task.id, agentType: task.agentType }, "Task enqueued");
+    log.info({ taskId: task.id, agentType: task.agentType, executionAgentType }, "Task enqueued");
     dispatched++;
   }
 
