@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ResetMissionsButton } from "./ResetMissionsButton";
+import { formatDateTimeCDMX } from "../lib/datetime";
 
 const API_URL = process.env.API_INTERNAL_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
@@ -108,7 +109,7 @@ export default async function MissionsPage({
                       <div className="card-details">
                         <div className="data-row">
                           <span className="data-label">CREATED:</span>
-                          <span className="data-value">{new Date(m.createdAt).toLocaleString()}</span>
+                          <span className="data-value">{formatDateTimeCDMX(m.createdAt)}</span>
                         </div>
 
                         <div className="hover-flow">

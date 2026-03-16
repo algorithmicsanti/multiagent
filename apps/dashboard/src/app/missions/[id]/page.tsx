@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { formatDateTimeCDMX, formatTimeCDMX } from "../../lib/datetime";
 
 const API_URL = process.env.API_INTERNAL_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
@@ -37,6 +38,24 @@ function extractSummaryFromEvents(events: Array<{ payload: unknown }>) {
 function StatusBadge({ status }: { status: string }) {
   const badgeClass = `badge-${status.toLowerCase()}`;
   return <span className={`badge ${badgeClass}`}>{status}</span>;
+}
+
+function getTaskRouting(metadata: unknown) {
+  if (!metadata || typeof metadata !== "object") return null;
+
+  const record = metadata as Record<string, unknown>;
+  if (!record.routedByPlanner) return null;
+
+  const originalAgentType = typeof record.originalAgentType === "string"
+    ? record.originalAgentType
+    : null;
+  const executionAgentType = typeof record.executionAgentType === "string"
+    ? record.executionAgentType
+    : null;
+
+  if (!originalAgentType && !executionAgentType) return null;
+
+  return { originalAgentType, executionAgentType };
 }
 
 export default async function MissionDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -123,7 +142,7 @@ export default async function MissionDetailPage({ params }: { params: Promise<{ 
             </div>
             <div className="data-row">
               <span className="data-label">TIME_START:</span>
-              <span className="data-value">{new Date(mission.createdAt).toLocaleString()}</span>
+              <span className="data-value">{formatDateTimeCDMX(mission.createdAt)}</span>
             </div>
             {mission.budgetLimit && (
               <div className="data-row">
@@ -164,7 +183,18 @@ export default async function MissionDetailPage({ params }: { params: Promise<{ 
           </div>
         ) : (
           <div className="missions-flow">
-            {mission.tasks?.map((t: { id: string; title: string; agentType: string; status: string; retries: number; requiresApproval: boolean }, index: number) => (
+            {mission.tasks?.map((t: {
+              id: string;
+              title: string;
+              agentType: string;
+              status: string;
+              retries: number;
+              requiresApproval: boolean;
+              metadata?: unknown;
+            }) => {
+              const routing = getTaskRouting(t.metadata);
+
+              return (
               <div key={t.id} className="mission-node">
                 <div className="connection-line vertical"></div>
                 <div className="isometric-card" style={{ borderLeft: `2px solid ${t.requiresApproval ? "var(--yellow)" : "var(--accent)"}` }}>
@@ -180,6 +210,24 @@ export default async function MissionDetailPage({ params }: { params: Promise<{ 
                     <span className="data-label">STATE:</span>
                     <StatusBadge status={t.status} />
                   </div>
+
+                  {routing && (
+                    <div style={{ marginTop: 10, padding: "10px 12px", border: "1px dashed var(--border)", background: "rgba(0, 240, 255, 0.04)" }}>
+                      <div className="data-label" style={{ marginBottom: 6 }}>EXECUTION ROUTING</div>
+                      {routing.originalAgentType && (
+                        <div className="data-row">
+                          <span className="data-label">REQUESTED:</span>
+                          <span className="data-value">{routing.originalAgentType}</span>
+                        </div>
+                      )}
+                      {routing.executionAgentType && (
+                        <div className="data-row" style={{ marginBottom: 0 }}>
+                          <span className="data-label">EXECUTED BY:</span>
+                          <span className="data-value">{routing.executionAgentType}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                   
                   <div className="card-details" style={{ display: "block", marginTop: 12, paddingTop: 12 }}>
                     <div className="data-row">
@@ -200,7 +248,7 @@ export default async function MissionDetailPage({ params }: { params: Promise<{ 
                   </div>
                 </div>
               </div>
-            ))}
+            );})}
           </div>
         )}
       </div>
@@ -217,7 +265,7 @@ export default async function MissionDetailPage({ params }: { params: Promise<{ 
             {events.map((e: { id: string; eventType: string; createdAt: string; payload: unknown }, i: number) => (
               <div key={e.id} style={{ display: "flex", padding: "16px 20px", borderBottom: i === events.length - 1 ? "none" : "1px solid rgba(255,255,255,0.05)", background: i % 2 === 0 ? "rgba(0,0,0,0.2)" : "transparent" }}>
                 <div style={{ minWidth: 100, fontSize: 11, color: "var(--text2)", fontFamily: "monospace" }}>
-                  {new Date(e.createdAt).toLocaleTimeString()}
+                  {formatTimeCDMX(e.createdAt)}
                 </div>
                 <div style={{ minWidth: 180, fontSize: 11, fontWeight: 600, color: "var(--accent)", letterSpacing: 1 }}>
                   {e.eventType}

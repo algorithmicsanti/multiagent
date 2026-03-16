@@ -14,6 +14,7 @@
     "infra:logs": "docker compose -f infra/compose/docker-compose.dev.yml logs -f",
     "orchestrator:start": "pnpm --filter @wm/orchestrator dev",
     "worker:research": "pnpm --filter @wm/worker-research dev",
+    "worker:promptops": "pnpm --filter @wm/worker-promptops dev",
     "worker:frontend": "echo 'worker-frontend not yet implemented'",
     "worker:backend": "echo 'worker-backend not yet implemented'",
     "worker:devops": "echo 'worker-devops not yet implemented'",
