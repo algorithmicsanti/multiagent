@@ -166,6 +166,85 @@ Regla operativa:
 - `mock-api.mjs` solo se usa para demos locales sin Docker.
 - En VPS con Docker, el modo correcto es siempre `pnpm infra:up` + `pnpm db:migrate`.
 
+#### Runbook para OpenClaw: si el dashboard local no refleja las misiones reales
+
+Síntoma típico:
+- OpenClaw crea misiones reales y en logs de `api` / `orchestrator` se ve `Planning mission...` y creación de `Task`.
+- Pero en `http://localhost:3000/missions` no aparecen esas misiones o aparece otra lista distinta.
+- Los indicadores del dashboard muestran `API` verde pero `DB` y `QUEUE` no coinciden con el estado esperado.
+
+Causa raíz más probable:
+- El dashboard local está leyendo `http://localhost:3001` por fallback.
+- En esa máquina, `localhost:3001` está sirviendo `mock-api.mjs` o un backend distinto al de la VPS.
+- Por eso los logs reales de Docker y la UI local no muestran el mismo estado.
+
+Cómo debe diagnosticar OpenClaw:
+```bash
+cd /home/santiago/projects/multiagent
+
+# 1) Ver qué endpoint usa el dashboard local
+grep -n "NEXT_PUBLIC_API_URL\|API_INTERNAL_URL" .env || true
+
+# 2) Ver si localhost:3001 responde algo tipo mock
+curl -s http://localhost:3001/api/v1/health
+curl -s http://localhost:3001/api/v1/missions
+```
+
+Interpretación del diagnóstico:
+- Si `/api/v1/health` devuelve `db: "ok (mock)"` o `redis: "ok (mock)"`, la UI local está leyendo el mock.
+- Si la lista de `/api/v1/missions` no coincide con lo que se ve en logs de Docker, la UI está apuntando al backend equivocado.
+
+Corrección obligatoria que OpenClaw debe aplicar:
+1. Detener cualquier `mock-api.mjs` local.
+2. Configurar explícitamente el dashboard para leer la API real.
+3. Reiniciar el dashboard para que cargue el `.env` nuevo.
+
+Caso A: usar la API real expuesta directamente por la VPS
+```bash
+cd /home/santiago/projects/multiagent
+
+# Detener mock local si existe
+pkill -f "node mock-api.mjs" || true
+
+# Configurar dashboard para apuntar al backend real
+sed -i '/^NEXT_PUBLIC_API_URL=/d' .env
+sed -i '/^API_INTERNAL_URL=/d' .env
+echo 'NEXT_PUBLIC_API_URL=http://<IP_O_DOMINIO_VPS>:3001' >> .env
+echo 'API_INTERNAL_URL=http://<IP_O_DOMINIO_VPS>:3001' >> .env
+
+# Reiniciar dashboard local si corre fuera de Docker
+pkill -f "next dev" || true
+pnpm --filter @wm/dashboard dev
+```
+
+Caso B: usar túnel SSH y mantener `localhost:3001`
+```bash
+# En la máquina local del operador
+ssh -L 3000:localhost:3000 -L 3001:localhost:3001 <usuario>@<IP_VPS>
+```
+
+Luego OpenClaw debe asegurar que NO quede mock corriendo en local:
+```bash
+pkill -f "node mock-api.mjs" || true
+curl -s http://localhost:3001/api/v1/health
+```
+
+Validación final que OpenClaw debe hacer:
+```bash
+curl -s http://localhost:3001/api/v1/health
+curl -s http://localhost:3001/api/v1/missions
+```
+
+Resultado esperado:
+1. El health ya no debe contener `ok (mock)`.
+2. La lista de misiones debe coincidir con lo que aparece en logs de `api` y `orchestrator`.
+3. El dashboard local debe reflejar las misiones reales creadas por OpenClaw.
+
+Nota importante:
+- Que `DB` y `QUEUE` se vean en rojo en la UI local no explica por sí solo la ausencia de misiones.
+- El problema crítico es a qué backend está apuntando el dashboard.
+- Primero corregir el endpoint. Luego, si hace falta, revisar el rendering del health.
+
 ### Política de ramas operativas (evitar choques con Copilot)
 
 Desde este punto, los cambios operativos/manuales del agente se desarrollan en rama dedicada:
