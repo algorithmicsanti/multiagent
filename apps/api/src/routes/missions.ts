@@ -75,6 +75,30 @@ export async function missionsRoutes(server: FastifyInstance) {
     });
   });
 
+  // DELETE /missions (reset all missions and dependent data)
+  server.delete("/missions", async (_req, reply) => {
+    const [runs, artifacts, approvals, events, tasks, missions] = await prisma.$transaction([
+      prisma.taskRun.deleteMany({}),
+      prisma.artifact.deleteMany({}),
+      prisma.approval.deleteMany({}),
+      prisma.eventLog.deleteMany({}),
+      prisma.task.deleteMany({}),
+      prisma.mission.deleteMany({}),
+    ]);
+
+    return reply.send({
+      ok: true,
+      deleted: {
+        missions: missions.count,
+        tasks: tasks.count,
+        taskRuns: runs.count,
+        artifacts: artifacts.count,
+        approvals: approvals.count,
+        events: events.count,
+      },
+    });
+  });
+
   // GET /missions/:id
   server.get<{ Params: { id: string } }>("/missions/:id", async (req, reply) => {
     const mission = await prisma.mission.findUnique({

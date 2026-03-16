@@ -198,9 +198,55 @@ body {
 .badge-waiting_approval { background: rgba(251, 191, 36, 0.1); border-color: #fbbf24; color: #fbbf24; }
 .badge-done { background: rgba(0, 240, 255, 0.1); border-color: var(--accent); color: var(--accent); }
 .badge-failed { background: rgba(255, 51, 102, 0.1); border-color: var(--red); color: var(--red); }
+.badge-completed { background: rgba(0, 255, 102, 0.1); border-color: var(--green); color: var(--green); }
+.badge-pending { background: rgba(96, 165, 250, 0.1); border-color: #60a5fa; color: #60a5fa; }
+.badge-enqueued { background: rgba(96, 165, 250, 0.1); border-color: #60a5fa; color: #60a5fa; }
+.badge-cancelled { background: rgba(148, 163, 184, 0.1); border-color: #94a3b8; color: #94a3b8; }
+.badge-blocked { background: rgba(251, 191, 36, 0.1); border-color: #fbbf24; color: #fbbf24; }
 
 .btn { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 2px; font-size: 11px; font-weight: 600; cursor: pointer; border: 1px solid var(--accent); background: rgba(0, 240, 255, 0.05); color: var(--accent); transition: all 0.2s; letter-spacing: 1px; text-transform: uppercase; font-family: var(--font); text-decoration: none;}
 .btn:hover { background: rgba(0, 240, 255, 0.15); box-shadow: 0 0 15px rgba(0, 240, 255, 0.3); }
+.btn-danger { border-color: var(--red); background: rgba(255, 51, 102, 0.08); color: #ff8fab; }
+.btn-danger:hover { background: rgba(255, 51, 102, 0.18); box-shadow: 0 0 15px rgba(255, 51, 102, 0.3); }
+
+.hover-flow {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+}
+.hover-flow-title {
+  color: var(--text2);
+  font-size: 10px;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+}
+.hover-flow-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.hover-flow-step {
+  font-size: 9px;
+  padding: 2px 6px;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  letter-spacing: 0.5px;
+}
+.hover-flow-step.done {
+  color: var(--green);
+  border-color: rgba(0, 255, 102, 0.4);
+  background: rgba(0, 255, 102, 0.08);
+}
+.hover-flow-step.active {
+  color: var(--accent);
+  border-color: rgba(0, 240, 255, 0.5);
+  background: rgba(0, 240, 255, 0.08);
+}
+.hover-flow-step.pending {
+  color: var(--text2);
+  border-color: rgba(148, 163, 184, 0.4);
+}
 
 /* Mission grid for flowchart feel */
 .missions-flow {

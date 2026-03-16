@@ -1,6 +1,11 @@
 import Link from "next/link";
+import { ResetMissionsButton } from "./ResetMissionsButton";
 
-const API_URL = process.env.API_INTERNAL_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+const API_URL = process.env.API_INTERNAL_URL ?? process.env.NEXT_PUBLIC_API_URL;
+
+if (!API_URL) {
+  throw new Error("Missing API URL. Set API_INTERNAL_URL or NEXT_PUBLIC_API_URL.");
+}
 
 interface Mission {
   id: string;
@@ -20,8 +25,23 @@ async function getMissions(status?: string) {
   return res.json();
 }
 
-function StatusBadge({ status }: { status: string }) {
-  return <span className={`badge badge-${status.toLowerCase()}`}>{status}</span>;
+const FLOW_STEPS = ["NEW", "PLANNING", "DISPATCHING", "RUNNING", "REVIEWING", "DONE"];
+
+function getFlowProgress(status: string) {
+  const normalized = status.toUpperCase();
+  if (normalized === "WAITING_APPROVAL") {
+    return { currentStep: "WAITING APPROVAL", completedIndex: 3 };
+  }
+  if (normalized === "FAILED" || normalized === "CANCELLED") {
+    return { currentStep: normalized, completedIndex: FLOW_STEPS.indexOf("RUNNING") };
+  }
+
+  const idx = FLOW_STEPS.indexOf(normalized);
+  if (idx >= 0) {
+    return { currentStep: normalized, completedIndex: idx };
+  }
+
+  return { currentStep: normalized, completedIndex: 0 };
 }
 
 export default async function MissionsPage({
@@ -30,7 +50,7 @@ export default async function MissionsPage({
   searchParams: Promise<{ status?: string }>;
 }) {
   const params = await searchParams;
-  const { data: missions, pagination } = await getMissions(params.status);
+  const { data: missions } = await getMissions(params.status);
 
   const statuses = ["NEW", "PLANNING", "DISPATCHING", "RUNNING", "REVIEWING", "WAITING_APPROVAL", "DONE", "FAILED"];
 
@@ -38,9 +58,12 @@ export default async function MissionsPage({
     <div className="main-content">
       <div className="page-header">
         <h1 className="page-title">Agent Missions Explorer</h1>
-        <Link href="/missions/new" className="btn">
-          NEW MISSION
-        </Link>
+        <div style={{ display: "flex", gap: 10 }}>
+          <ResetMissionsButton />
+          <Link href="/missions/new" className="btn">
+            NEW MISSION
+          </Link>
+        </div>
       </div>
 
       <div className="agent-status-banner">
@@ -70,6 +93,7 @@ export default async function MissionsPage({
           <div className="missions-flow">
             {(missions as Mission[]).map((m) => {
               const badgeClass = `badge-${m.status.toLowerCase()}`;
+              const flow = getFlowProgress(m.status);
               
               return (
                 <div key={m.id} className="mission-node">
@@ -87,20 +111,31 @@ export default async function MissionsPage({
                       
                       <div className="card-details">
                         <div className="data-row">
-                          <span className="data-label">PRIORITY:</span>
-                          <span className="data-value">P{m.priority}</span>
-                        </div>
-                        <div className="data-row">
                           <span className="data-label">CREATED:</span>
                           <span className="data-value">{new Date(m.createdAt).toLocaleString()}</span>
                         </div>
-                        <div className="data-row">
-                          <span className="data-label">ID:</span>
-                          <span className="data-value" style={{fontFamily: 'monospace', fontSize: '10px'}}>{m.id.substring(0, 8)}</span>
-                        </div>
-                        <div className="data-row">
-                          <span className="data-label">TASKS:</span>
-                          <span className="data-value">{m._count?.tasks ?? 0} total</span>
+
+                        <div className="hover-flow">
+                          <div className="hover-flow-title">PIPELINE</div>
+                          <div className="hover-flow-steps">
+                            {FLOW_STEPS.map((step, idx) => {
+                              const stateClass = idx < flow.completedIndex
+                                ? "done"
+                                : idx === flow.completedIndex
+                                  ? "active"
+                                  : "pending";
+
+                              return (
+                                <span key={step} className={`hover-flow-step ${stateClass}`}>
+                                  {step}
+                                </span>
+                              );
+                            })}
+                          </div>
+                          <div className="data-row" style={{ marginBottom: 0 }}>
+                            <span className="data-label">NOW:</span>
+                            <span className="data-value">{flow.currentStep}</span>
+                          </div>
                         </div>
                       </div>
                     </div>

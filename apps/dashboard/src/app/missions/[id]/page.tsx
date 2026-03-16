@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-const API_URL = process.env.API_INTERNAL_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+const API_URL = process.env.API_INTERNAL_URL ?? process.env.NEXT_PUBLIC_API_URL;
+
+if (!API_URL) {
+  throw new Error("Missing API URL. Set API_INTERNAL_URL or NEXT_PUBLIC_API_URL.");
+}
 
 async function getMission(id: string) {
   const res = await fetch(`${API_URL}/api/v1/missions/${id}`, { cache: "no-store" });
@@ -15,6 +19,25 @@ async function getMissionEvents(id: string) {
   return res.json();
 }
 
+function extractRequestedFormat(mission: { metadata?: unknown }) {
+  const metadata = mission.metadata;
+  if (!metadata || typeof metadata !== "object") return null;
+
+  const record = metadata as Record<string, unknown>;
+  const maybeFormat = record.requestedFormat ?? record.outputFormat ?? record.format;
+  return typeof maybeFormat === "string" ? maybeFormat : null;
+}
+
+function extractSummaryFromEvents(events: Array<{ payload: unknown }>) {
+  const reversed = [...events].reverse();
+  for (const event of reversed) {
+    if (!event.payload || typeof event.payload !== "object") continue;
+    const payload = event.payload as Record<string, unknown>;
+    if (typeof payload.summary === "string") return payload.summary;
+  }
+  return null;
+}
+
 function StatusBadge({ status }: { status: string }) {
   const badgeClass = `badge-${status.toLowerCase()}`;
   return <span className={`badge ${badgeClass}`}>{status}</span>;
@@ -25,6 +48,11 @@ export default async function MissionDetailPage({ params }: { params: Promise<{ 
   const [mission, events] = await Promise.all([getMission(id), getMissionEvents(id)]);
 
   if (!mission) notFound();
+
+  const isCompleted = mission.status === "DONE";
+  const requestedFormat = extractRequestedFormat(mission);
+  const latestArtifact = mission.artifacts?.[0] ?? null;
+  const eventSummary = extractSummaryFromEvents(events as Array<{ payload: unknown }>);
 
   return (
     <div className="main-content">
@@ -40,10 +68,48 @@ export default async function MissionDetailPage({ params }: { params: Promise<{ 
         <StatusBadge status={mission.status} />
       </div>
 
+      {isCompleted && (
+        <div className="isometric-card" style={{ marginBottom: 28, borderLeft: "3px solid var(--green)" }}>
+          <h3 className="card-title" style={{ color: "var(--green)", marginBottom: 12 }}>FINAL RESULT</h3>
+          <div className="data-row" style={{ marginBottom: 10 }}>
+            <span className="data-label">REQUESTED FORMAT:</span>
+            <span className="data-value">{requestedFormat ?? (latestArtifact?.artifactType ?? "N/A")}</span>
+          </div>
+
+          {latestArtifact ? (
+            <div style={{ background: "rgba(0, 0, 0, 0.28)", border: "1px solid var(--border)", padding: 14, borderRadius: 4 }}>
+              <div className="data-row" style={{ marginBottom: 8 }}>
+                <span className="data-label">OUTPUT TYPE:</span>
+                <span className="badge badge-done">{latestArtifact.artifactType}</span>
+              </div>
+              <div className="data-label" style={{ marginBottom: 4 }}>RESULT</div>
+              <div className="data-value" style={{ fontFamily: "monospace", wordBreak: "break-all" }}>
+                {latestArtifact.pathOrUrl}
+              </div>
+            </div>
+          ) : (
+            <p className="data-label">No artifact was produced for this mission.</p>
+          )}
+
+          {eventSummary && (
+            <div style={{ marginTop: 14 }}>
+              <div className="data-label" style={{ marginBottom: 4 }}>SUMMARY</div>
+              <div className="data-value">{eventSummary}</div>
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="agent-status-banner">
         <div className="pulse"></div>
         <span><strong>SysInfo:</strong> Detailed telemetry for Node ID [{mission.id}]</span>
       </div>
+
+      {isCompleted && (
+        <h3 className="page-title" style={{ fontSize: "14px", marginTop: "0", marginBottom: "20px" }}>
+          TECHNICAL DETAILS
+        </h3>
+      )}
 
       <div className="grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "32px", marginBottom: "40px" }}>
         <div className="isometric-card" style={{ height: "100%" }}>
