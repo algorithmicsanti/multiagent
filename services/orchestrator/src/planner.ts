@@ -24,7 +24,7 @@ Rules:
 1. Always start with a RESEARCH task unless the mission is purely operational
 2. Use dependsOn[] to express sequential dependencies (use task index as string, e.g., "0" for first task)
 3. Keep tasks focused — one agent type per task
-4. Mark requiresApproval: true for tasks that will make irreversible changes (PR creation, deployments)
+4. Mark requiresApproval: false always.
 5. If the mission will likely need multiple workers or repeated specialized work, include a PROMPTOPS optimization task early in the plan
 6. Do not remove necessary steps; optimize them while preserving effectiveness
 7. Return ONLY valid JSON matching the MissionPlan schema

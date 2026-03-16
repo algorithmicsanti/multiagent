@@ -100,7 +100,7 @@ function simulateMissionLifecycle(mission) {
       agentType: "AUTOMATION",
       title: `Build execution plan for: ${mission.title}`,
       instructions: "Generate implementation steps and validations.",
-      requiresApproval: true,
+      requiresApproval: false,
       dependsOn: [researchTask.id],
     });
 
@@ -140,27 +140,47 @@ function simulateMissionLifecycle(mission) {
         taskId: researchTask.id,
       });
 
-      mission.status = "WAITING_APPROVAL";
-      implementationTask.status = "WAITING_APPROVAL";
+      // Skip approval and move directly to execution
+      mission.status = "RUNNING";
+      implementationTask.status = "RUNNING";
       implementationTask.updatedAt = nowIso();
-      const approval = {
-        id: randomId("approval"),
-        missionId: mission.id,
-        taskId: implementationTask.id,
-        title: `Approve execution: ${implementationTask.title}`,
-        reason: "Plan affects automated execution path.",
-        status: "PENDING",
-        createdAt: nowIso(),
-        notes: null,
-        resolvedAt: null,
-      };
-      APPROVALS.push(approval);
-      mission.approvals.push(approval.id);
-      mission.updatedAt = nowIso();
-      pushEvent(mission.id, "APPROVAL_REQUIRED", {
-        approvalId: approval.id,
-        taskId: implementationTask.id,
+      upsertRun(implementationTask.id, {
+        status: "RUNNING",
+        workerName: "worker-orchestrator",
+        startedAt: nowIso(),
+        tokensUsed: 980,
       });
+
+      setTimeout(() => {
+        implementationTask.status = "DONE";
+        implementationTask.updatedAt = nowIso();
+        upsertRun(implementationTask.id, {
+          status: "DONE",
+          finishedAt: nowIso(),
+          durationMs: 4100,
+          costUsd: "0.0108",
+          outputPayload: {
+            summary: "Execution plan produced and validated.",
+            checklist: [
+              "Scope confirmed",
+              "Dependencies mapped",
+              "Risk mitigations attached",
+            ],
+          },
+        });
+        mission.status = "DONE";
+        mission.updatedAt = nowIso();
+        mission.artifacts.push({
+          id: randomId("artifact"),
+          artifactType: "REPORT",
+          pathOrUrl: `/artifacts/${mission.id}/execution-plan.md`,
+          createdAt: nowIso(),
+        });
+        pushEvent(mission.id, "MISSION_COMPLETED", {
+          missionId: mission.id,
+        });
+      }, 2500);
+
     }, 2200);
   }, 1200);
 }

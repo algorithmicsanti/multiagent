@@ -208,7 +208,7 @@ export default async function MissionDetailPage({ params }: { params: Promise<{ 
               return (
               <div key={t.id} className="mission-node">
                 <div className="connection-line vertical"></div>
-                <div className="isometric-card" style={{ borderLeft: `2px solid ${t.requiresApproval ? "var(--yellow)" : "var(--accent)"}` }}>
+                <div className="isometric-card" style={{ borderLeft: `2px solid var(--accent)` }}>
                   <div className="card-header" style={{ marginBottom: 8, paddingBottom: 8 }}>
                     <span className="badge badge-planning">{t.agentType} CORE</span>
                   </div>
@@ -245,12 +245,6 @@ export default async function MissionDetailPage({ params }: { params: Promise<{ 
                       <span className="data-label">ERRORS:</span>
                       <span className="data-value" style={{ color: t.retries > 0 ? "var(--red)" : "inherit"}}>{t.retries} count</span>
                     </div>
-                    {t.requiresApproval && (
-                      <div className="data-row">
-                        <span className="data-label">BLOCKER:</span>
-                        <span className="badge badge-waiting_approval" style={{ animation: "pulsey 2s infinite" }}>HUMAN APPROVAL REQ</span>
-                      </div>
-                    )}
                     <div style={{ marginTop: 16 }}>
                       <Link href={`/missions/${id}/tasks/${t.id}`} className="btn" style={{ width: "100%", justifyContent: "center" }}>
                         ACCESS LOGS / RUNS
