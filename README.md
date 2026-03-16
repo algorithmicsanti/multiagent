@@ -2097,3 +2097,31 @@ Nota: si los logs muestran `+29 lines` o fragmentos truncados, eso suele ser com
 docker compose -f infra/compose/docker-compose.dev.yml logs -f api orchestrator worker-research dashboard
 ```
 
+### Reintento verificado (2026-03-16 02:27 UTC)
+
+Se repitió la prueba desde cero para validar visibilidad en dashboard y dejar trazabilidad para Copilot:
+
+1. Se creó misión por API:
+   - `id=cmmskccar000oqn0zkrlfk74a`
+   - `title="Dashboard visible check 20260316T022716Z"`
+2. Se verificó en API (`GET /api/v1/missions?limit=20`) que la misión existe y evoluciona de estado.
+3. Se verificó en SSR del dashboard (`GET /missions`) que aparece en la tabla con link directo:
+   - `/missions/cmmskccar000oqn0zkrlfk74a`
+4. Se verificó en logs:
+   - `api`: `POST /api/v1/missions` -> `201`
+   - `dashboard`: `GET /missions` -> `200`
+   - `orchestrator`: `Planning mission... missionId=cmmskccar000oqn0zkrlfk74a`
+
+Comandos exactos usados en la verificación:
+
+```bash
+curl -s -X POST http://localhost:3001/api/v1/missions \
+  -H 'content-type: application/json' \
+  -d '{"title":"Dashboard visible check 20260316T022716Z","description":"Reintento final de verificación visual en dashboard","priority":10,"createdBy":"german"}'
+
+curl -s 'http://localhost:3001/api/v1/missions?limit=20'
+curl -s http://localhost:3000/missions
+
+docker compose -f infra/compose/docker-compose.dev.yml logs --since=3m --tail=120 api dashboard orchestrator
+```
+
