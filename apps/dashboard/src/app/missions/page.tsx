@@ -35,9 +35,6 @@ const FLOW_STEPS = ["NEW", "PLANNING", "DISPATCHING", "RUNNING", "REVIEWING", "D
 
 function getFlowProgress(status: string) {
   const normalized = status.toUpperCase();
-  if (normalized === "WAITING_APPROVAL") {
-    return { currentStep: "WAITING APPROVAL", completedIndex: 3 };
-  }
   if (normalized === "FAILED" || normalized === "CANCELLED") {
     return { currentStep: normalized, completedIndex: FLOW_STEPS.indexOf("RUNNING") };
   }
@@ -58,7 +55,7 @@ export default async function MissionsPage({
   const params = await searchParams;
   const { data: missions } = await getMissions(params.status);
 
-  const statuses = ["NEW", "PLANNING", "DISPATCHING", "RUNNING", "REVIEWING", "WAITING_APPROVAL", "DONE", "FAILED"];
+  const statuses = ["NEW", "PLANNING", "DISPATCHING", "RUNNING", "REVIEWING", "DONE", "FAILED"];
 
   return (
     <div className="main-content">

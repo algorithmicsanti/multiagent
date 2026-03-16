@@ -71,7 +71,7 @@ export default function NewMissionPage() {
             <label className="data-label" style={{ marginBottom: "8px", display: "block" }}>MISSION TITLE / DIRECTIVE *</label>
             <input
               className="form-input"
-              style={{ background: "rgba(15, 23, 42, 0.6)", border: "1px solid var(--border)", color: "#fff", padding: "12px", width: "100%", borderRadius: "2px", fontFamily: "var(--font)" }}
+              style={{ background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text)", padding: "12px", width: "100%", borderRadius: "var(--radius-sm)", fontFamily: "inherit" }}
               required
               value={form.title}
               onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
@@ -108,7 +108,7 @@ export default function NewMissionPage() {
               <label className="data-label" style={{ marginBottom: "8px", display: "block" }}>MAX BUDGET (USD)</label>
               <input
                 className="form-input"
-                style={{ background: "rgba(15, 23, 42, 0.6)", border: "1px solid var(--border)", color: "#fff", padding: "12px", width: "100%", borderRadius: "2px", fontFamily: "var(--font)" }}
+                style={{ background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text)", padding: "12px", width: "100%", borderRadius: "var(--radius-sm)", fontFamily: "inherit" }}
                 type="number"
                 step="0.01"
                 min="0"

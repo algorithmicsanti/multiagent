@@ -221,7 +221,7 @@ h1, h2, h3, h4, .navbar-brand, .page-title, .card-title {
 .badge-new { background: rgba(96, 165, 250, 0.15); color: #3b82f6; }
 .badge-planning { background: rgba(167, 139, 250, 0.15); color: #8b5cf6; }
 .badge-running { background: rgba(16, 185, 129, 0.15); color: var(--green); }
-.badge-reviewing, .badge-waiting_approval { background: rgba(245, 158, 11, 0.15); color: var(--yellow); }
+.badge-reviewing { background: rgba(245, 158, 11, 0.15); color: var(--yellow); }
 .badge-done, .badge-completed { background: var(--brand-gradient); color: white; border: none; }
 .badge-failed { background: rgba(239, 68, 68, 0.15); color: var(--red); }
 .badge-pending, .badge-enqueued { background: rgba(96, 165, 250, 0.15); color: #3b82f6; }
