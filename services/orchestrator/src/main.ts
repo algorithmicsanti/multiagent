@@ -152,4 +152,9 @@ const shutdown = async () => {
 process.on("SIGTERM", shutdown);
 process.on("SIGINT", shutdown);
 
-await run();
+run().catch(async (err) => {
+  log.error({ err }, "Orchestrator fatal error");
+  await prisma.$disconnect();
+  redis.disconnect();
+  process.exit(1);
+});
