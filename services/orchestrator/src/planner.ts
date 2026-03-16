@@ -174,7 +174,8 @@ function parseMissionPlanFromText(text: string): MissionPlan {
 
 export async function generateMissionPlan(
   missionTitle: string,
-  missionDescription: string
+  missionDescription: string,
+  priorContext?: string
 ): Promise<MissionPlan> {
   log.info({ missionTitle }, "Generating mission plan");
 
@@ -190,7 +191,7 @@ export async function generateMissionPlan(
         messages: [
           {
             role: "user",
-            content: `Mission Title: ${missionTitle}\n\nMission Description:\n${missionDescription}\n\nGenerate a detailed mission plan as JSON.${attempt > 1 ? " Return ONLY JSON object, no prose." : ""}`,
+            content: `Mission Title: ${missionTitle}\n\nMission Description:\n${missionDescription}\n\nPrior related mission context (for reuse/efficiency, avoid duplicate work):\n${priorContext ?? "None"}\n\nGenerate a detailed mission plan as JSON.${attempt > 1 ? " Return ONLY JSON object, no prose." : ""}`,
           },
         ],
       });

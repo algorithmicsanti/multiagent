@@ -16,6 +16,43 @@ const redis = new Redis(process.env.REDIS_URL ?? "redis://localhost:6379", {
 
 const queues = createQueues(redis);
 
+async function buildPriorMissionContext(title: string): Promise<string> {
+  const similar = await prisma.mission.findMany({
+    where: {
+      status: MissionStatus.DONE,
+      title: { contains: title.slice(0, 32), mode: "insensitive" },
+    },
+    orderBy: { updatedAt: "desc" },
+    take: 3,
+    include: {
+      artifacts: {
+        orderBy: { createdAt: "desc" },
+        take: 1,
+      },
+      eventLogs: {
+        where: { eventType: EVENT_TYPES.TASK_COMPLETED },
+        orderBy: { createdAt: "desc" },
+        take: 3,
+      },
+    },
+  });
+
+  if (similar.length === 0) return "None";
+
+  return similar
+    .map((m, i) => {
+      const summaries = m.eventLogs
+        .map((e) => {
+          const payload = (e.payload ?? {}) as Record<string, unknown>;
+          return typeof payload.summary === "string" ? payload.summary : null;
+        })
+        .filter((v): v is string => Boolean(v));
+      const artifact = m.artifacts[0]?.pathOrUrl ?? "n/a";
+      return `${i + 1}) Mission ${m.id} | ${m.title}\n- artifact: ${artifact}\n- summaries: ${summaries.join(" | ") || "n/a"}`;
+    })
+    .join("\n\n");
+}
+
 async function processMission(missionId: string): Promise<void> {
   const mission = await prisma.mission.findUnique({ where: { id: missionId } });
   if (!mission) return;
@@ -34,7 +71,8 @@ async function processMission(missionId: string): Promise<void> {
 
     let plan;
     try {
-      plan = await generateMissionPlan(mission.title, mission.description);
+      const priorContext = await buildPriorMissionContext(mission.title);
+      plan = await generateMissionPlan(mission.title, mission.description, priorContext);
     } catch (err) {
       log.error({ missionId, err }, "Planning failed");
       await prisma.mission.update({ where: { id: missionId }, data: { status: MissionStatus.FAILED } });

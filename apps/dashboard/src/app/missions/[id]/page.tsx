@@ -33,27 +33,58 @@ function formatHumanResult(content: string | null): { human: string; technical: 
   const trimmed = content.trim();
   try {
     const parsed = JSON.parse(trimmed) as Record<string, unknown>;
+
     const summary =
       (typeof parsed.executiveSummary === "string" && parsed.executiveSummary) ||
       (typeof parsed.summary === "string" && parsed.summary) ||
+      "Sin resumen ejecutivo";
+
+    const recommendation =
       (typeof parsed.recommendation === "string" && parsed.recommendation) ||
-      "Resultado disponible";
+      "Sin recomendación final";
 
     const topAutomations = Array.isArray(parsed.topAutomations)
       ? parsed.topAutomations.slice(0, 5).map((item, idx) => {
-          if (typeof item === "string") return `${idx + 1}. ${item}`;
+          const fallback = {
+            name: `Automatización ${idx + 1}`,
+            impact: "-",
+            effort: "-",
+            priority: "-",
+          };
+
+          if (typeof item === "string") {
+            return { ...fallback, name: item };
+          }
           if (item && typeof item === "object") {
             const row = item as Record<string, unknown>;
-            const name = String(row.name ?? row.automation ?? row.title ?? `Automatización ${idx + 1}`);
-            const impact = row.impact ? ` | Impacto: ${String(row.impact)}` : "";
-            const effort = row.effort ? ` | Esfuerzo: ${String(row.effort)}` : "";
-            return `${idx + 1}. ${name}${impact}${effort}`;
+            return {
+              name: String(row.name ?? row.automation ?? row.title ?? fallback.name),
+              impact: String(row.impact ?? row.expectedImpact ?? "-"),
+              effort: String(row.effort ?? row.complexity ?? "-"),
+              priority: String(row.priority ?? row.rank ?? "-"),
+            };
           }
-          return `${idx + 1}. ${String(item)}`;
+          return fallback;
         })
       : [];
 
-    const human = [summary, ...topAutomations].filter(Boolean).join("\n");
+    const tableHeader = "# | Automatización | Impacto esperado | Esfuerzo | Prioridad";
+    const tableSep = "---|---|---|---|---";
+    const tableRows = topAutomations.map((a, i) => `${i + 1} | ${a.name} | ${a.impact} | ${a.effort} | ${a.priority}`);
+
+    const human = [
+      "Resumen ejecutivo:",
+      summary,
+      "",
+      "Top 5 automatizaciones:",
+      tableHeader,
+      tableSep,
+      ...tableRows,
+      "",
+      "Recomendación final:",
+      recommendation,
+    ].join("\n");
+
     return { human, technical: JSON.stringify(parsed, null, 2) };
   } catch {
     const lines = trimmed.split("\n").map((l) => l.trim()).filter(Boolean);

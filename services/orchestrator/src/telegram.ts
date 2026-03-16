@@ -42,24 +42,39 @@ function humanizeRawResult(raw: string): string {
     const summary =
       (typeof parsed.executiveSummary === "string" && parsed.executiveSummary) ||
       (typeof parsed.summary === "string" && parsed.summary) ||
-      (typeof parsed.recommendation === "string" && parsed.recommendation) ||
-      null;
+      "Sin resumen ejecutivo";
 
-    const topItems = Array.isArray(parsed.topAutomations)
+    const recommendation =
+      (typeof parsed.recommendation === "string" && parsed.recommendation) ||
+      "Sin recomendación final";
+
+    const rows = Array.isArray(parsed.topAutomations)
       ? parsed.topAutomations.slice(0, 5).map((item, idx) => {
-          if (typeof item === "string") return `${idx + 1}. ${item}`;
+          if (typeof item === "string") {
+            return `${idx + 1}) ${item} | Impacto: - | Esfuerzo: - | Prioridad: -`;
+          }
           if (item && typeof item === "object") {
             const row = item as Record<string, unknown>;
             const name = String(row.name ?? row.automation ?? row.title ?? `Automatización ${idx + 1}`);
-            const impact = row.impact ? ` | impacto: ${String(row.impact)}` : "";
-            const effort = row.effort ? ` | esfuerzo: ${String(row.effort)}` : "";
-            return `${idx + 1}. ${name}${impact}${effort}`;
+            const impact = String(row.impact ?? row.expectedImpact ?? "-");
+            const effort = String(row.effort ?? row.complexity ?? "-");
+            const priority = String(row.priority ?? row.rank ?? "-");
+            return `${idx + 1}) ${name} | Impacto: ${impact} | Esfuerzo: ${effort} | Prioridad: ${priority}`;
           }
-          return `${idx + 1}. ${String(item)}`;
+          return `${idx + 1}) ${String(item)} | Impacto: - | Esfuerzo: - | Prioridad: -`;
         })
       : [];
 
-    return [summary, ...topItems].filter(Boolean).join("\n").slice(0, 3200) || trimmed.slice(0, 3200);
+    return [
+      "Resumen ejecutivo:",
+      summary,
+      "",
+      "Top 5 automatizaciones:",
+      ...rows,
+      "",
+      "Recomendación final:",
+      recommendation,
+    ].join("\n").slice(0, 3200);
   } catch {
     const lines = trimmed.split("\n").map((l) => l.trim()).filter(Boolean);
     const top = lines.slice(0, 12).join("\n");
