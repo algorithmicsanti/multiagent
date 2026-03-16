@@ -96,11 +96,14 @@ async function processMission(missionId: string): Promise<void> {
     status === MissionStatus.DISPATCHING ||
     status === MissionStatus.RUNNING ||
     status === MissionStatus.WAITING_RESULT ||
+    status === MissionStatus.REVIEWING ||
     mission.status === MissionStatus.DISPATCHING
   ) {
-    const dispatched = await dispatchReadyTasks(missionId, queues);
-    if (dispatched > 0) {
-      log.info({ missionId, dispatched }, "Tasks dispatched");
+    if (status !== MissionStatus.REVIEWING) {
+      const dispatched = await dispatchReadyTasks(missionId, queues);
+      if (dispatched > 0) {
+        log.info({ missionId, dispatched }, "Tasks dispatched");
+      }
     }
     await checkMissionCompletion(missionId);
   }
