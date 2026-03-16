@@ -65,5 +65,41 @@ export async function checkMissionCompletion(missionId: string): Promise<void> {
         status: "REVIEWING",
       });
     }
+    return;
+  }
+
+  if (currentStatus === MissionStatus.REVIEWING) {
+    if (allDone && !anyFailed) {
+      await prisma.mission.update({
+        where: { id: missionId },
+        data: { status: MissionStatus.DONE },
+      });
+      await logEvent(prisma, {
+        eventType: EVENT_TYPES.MISSION_DONE,
+        missionId,
+        payload: { missionId },
+      });
+      log.info({ missionId }, "Mission moved to DONE");
+      await notifyMissionStatus({
+        missionId,
+        status: "DONE",
+      });
+    } else if (anyFailed && !anyRunning) {
+      await prisma.mission.update({
+        where: { id: missionId },
+        data: { status: MissionStatus.FAILED },
+      });
+      await logEvent(prisma, {
+        eventType: EVENT_TYPES.MISSION_FAILED,
+        missionId,
+        payload: { missionId, reason: "Failure detected during reviewing" },
+      });
+      log.warn({ missionId }, "Mission failed during REVIEWING");
+      await notifyMissionStatus({
+        missionId,
+        status: "FAILED",
+        reason: "Failure detected during reviewing",
+      });
+    }
   }
 }

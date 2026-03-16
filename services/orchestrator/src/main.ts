@@ -117,6 +117,7 @@ async function tick(): Promise<void> {
             MissionStatus.DISPATCHING,
             MissionStatus.RUNNING,
             MissionStatus.WAITING_RESULT,
+            MissionStatus.REVIEWING,
           ],
         },
       },
