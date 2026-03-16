@@ -22,7 +22,7 @@ async function getMissions(status?: string) {
     if (!res.ok) return { data: [], pagination: { total: 0 } };
     return res.json();
   } catch (e) {
-    console.error("Fail fetching API:", e);
+    // Silent catch so it doesn't trigger Next.js Error Overlay on dev mode
     return { data: [], pagination: { total: 0 } };
   }
 }
