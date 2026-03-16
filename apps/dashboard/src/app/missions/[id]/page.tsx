@@ -20,9 +20,45 @@ async function getArtifactContent(id: string) {
   try {
     const res = await fetch(`${API_URL}/api/v1/artifacts/${id}/content`, { cache: "no-store" });
     if (!res.ok) return null;
-    return await res.text();
-  } catch (e) {
+    const data = (await res.json()) as { content?: string | null };
+    return data.content ?? null;
+  } catch {
     return null;
+  }
+}
+
+function formatHumanResult(content: string | null): { human: string; technical: string | null } {
+  if (!content) return { human: "No summary was provided by the agents.", technical: null };
+
+  const trimmed = content.trim();
+  try {
+    const parsed = JSON.parse(trimmed) as Record<string, unknown>;
+    const summary =
+      (typeof parsed.executiveSummary === "string" && parsed.executiveSummary) ||
+      (typeof parsed.summary === "string" && parsed.summary) ||
+      (typeof parsed.recommendation === "string" && parsed.recommendation) ||
+      "Resultado disponible";
+
+    const topAutomations = Array.isArray(parsed.topAutomations)
+      ? parsed.topAutomations.slice(0, 5).map((item, idx) => {
+          if (typeof item === "string") return `${idx + 1}. ${item}`;
+          if (item && typeof item === "object") {
+            const row = item as Record<string, unknown>;
+            const name = String(row.name ?? row.automation ?? row.title ?? `Automatización ${idx + 1}`);
+            const impact = row.impact ? ` | Impacto: ${String(row.impact)}` : "";
+            const effort = row.effort ? ` | Esfuerzo: ${String(row.effort)}` : "";
+            return `${idx + 1}. ${name}${impact}${effort}`;
+          }
+          return `${idx + 1}. ${String(item)}`;
+        })
+      : [];
+
+    const human = [summary, ...topAutomations].filter(Boolean).join("\n");
+    return { human, technical: JSON.stringify(parsed, null, 2) };
+  } catch {
+    const lines = trimmed.split("\n").map((l) => l.trim()).filter(Boolean);
+    const human = lines.slice(0, 12).join("\n");
+    return { human: human || "Resultado disponible", technical: trimmed };
   }
 }
 
@@ -79,10 +115,11 @@ export default async function MissionDetailPage({ params }: { params: Promise<{ 
   const latestArtifact = mission.artifacts?.[0] ?? null;
   const eventSummary = extractSummaryFromEvents(events as Array<{ payload: unknown }>);
 
-  let artifactContent = null;
+  let artifactContent: string | null = null;
   if (latestArtifact) {
     artifactContent = await getArtifactContent(latestArtifact.id);
   }
+  const formattedResult = formatHumanResult(artifactContent);
 
   return (
     <div className="main-content">
@@ -108,16 +145,20 @@ export default async function MissionDetailPage({ params }: { params: Promise<{ 
               <span className="badge badge-done">{latestArtifact?.artifactType ?? requestedFormat ?? "OUTPUT"}</span>
             </div>
 
-            {artifactContent ? (
-              <pre style={{ color: "var(--text)", fontSize: 13, lineHeight: 1.6, whiteSpace: "pre-wrap", background: "rgba(0,0,0,0.2)", padding: 16, border: "1px solid var(--border)", fontFamily: "monospace" }}>
-                 {artifactContent}
+            <div style={{ color: "var(--text)", fontSize: 13, lineHeight: 1.7, background: "rgba(0,0,0,0.2)", padding: 16, border: "1px solid var(--border)", marginBottom: 12 }}>
+              <strong style={{ display: "block", marginBottom: 8 }}>Resumen humano</strong>
+              <pre style={{ margin: 0, whiteSpace: "pre-wrap", fontFamily: "inherit" }}>
+                {formattedResult.human || eventSummary || "No summary was provided by the agents."}
               </pre>
-            ) : eventSummary ? (
-              <div style={{ color: "var(--text)", fontSize: 13, lineHeight: 1.6 }}>
-                 {eventSummary}
-              </div>
-            ) : (
-                <p className="data-label">No summary was provided by the agents.</p>
+            </div>
+
+            {formattedResult.technical && (
+              <details style={{ marginTop: 10 }}>
+                <summary style={{ cursor: "pointer", color: "var(--accent)" }}>Ver detalles técnicos</summary>
+                <pre style={{ color: "var(--text)", fontSize: 12, lineHeight: 1.5, whiteSpace: "pre-wrap", background: "rgba(0,0,0,0.25)", padding: 12, border: "1px solid var(--border)", fontFamily: "monospace", marginTop: 10 }}>
+                  {formattedResult.technical}
+                </pre>
+              </details>
             )}
 
             <div style={{ marginTop: "24px", paddingTop: "16px", borderTop: "1px dashed var(--border)", fontSize: "11px", color: "var(--text2)", display: "flex", justifyContent: "space-between" }}>
