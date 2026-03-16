@@ -35,66 +35,81 @@ export default async function MissionsPage({
   const statuses = ["NEW", "PLANNING", "DISPATCHING", "RUNNING", "REVIEWING", "WAITING_APPROVAL", "DONE", "FAILED"];
 
   return (
-    <div>
+    <div className="main-content">
       <div className="page-header">
-        <h1 className="page-title">Missions</h1>
-        <Link href="/missions/new" className="btn btn-primary">+ New Mission</Link>
+        <h1 className="page-title">Agent Missions Explorer</h1>
+        <Link href="/missions/new" className="btn">
+          NEW MISSION
+        </Link>
       </div>
 
-      <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
-        <Link href="/missions" className={`btn btn-ghost ${!params.status ? "btn-primary" : ""}`} style={{ fontSize: 12 }}>All</Link>
+      <div className="agent-status-banner">
+        <div className="pulse"></div>
+        <span><strong>Web Mentor OS:</strong> Scanning network for active assignments and tasks...</span>
+      </div>
+
+      <div className="filters">
+        <Link href="/missions" className={`filter-btn ${!params.status ? "active" : ""}`}>ALL MISSIONS</Link>
         {statuses.map((s) => (
           <Link
             key={s}
             href={`/missions?status=${s}`}
-            className={`btn btn-ghost ${params.status === s ? "btn-primary" : ""}`}
-            style={{ fontSize: 12 }}
+            className={`filter-btn ${params.status === s ? "active" : ""}`}
           >
-            {s}
+            {s.replace('_', ' ')}
           </Link>
         ))}
       </div>
 
-      <div className="card">
+      <div className="diagram-canvas">
         {missions.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-state-title">No missions found</div>
-            <p>Create your first mission to get started.</p>
+            <p>No active missions found in the system.</p>
           </div>
         ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Title</th>
-                <th>Status</th>
-                <th>Priority</th>
-                <th>Tasks</th>
-                <th>Created by</th>
-                <th>Created</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(missions as Mission[]).map((m) => (
-                <tr key={m.id}>
-                  <td>
-                    <Link href={`/missions/${m.id}`} className="link">{m.title}</Link>
-                  </td>
-                  <td><StatusBadge status={m.status} /></td>
-                  <td><span className="priority-badge">P{m.priority}</span></td>
-                  <td>{m._count?.tasks ?? 0}</td>
-                  <td style={{ color: "var(--text2)" }}>{m.createdBy}</td>
-                  <td style={{ color: "var(--text2)", fontSize: 12 }}>
-                    {new Date(m.createdAt).toLocaleString()}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="missions-flow">
+            {(missions as Mission[]).map((m) => {
+              const badgeClass = `badge-${m.status.toLowerCase()}`;
+              
+              return (
+                <div key={m.id} className="mission-node">
+                  <Link href={`/missions/${m.id}`} style={{ textDecoration: 'none', display: 'block' }}>
+                    <div className="connection-line vertical"></div>
+                    <div className="isometric-card">
+                      <div className="card-header">
+                        <span className="card-title">{m.title}</span>
+                      </div>
+                      
+                      <div className="data-row">
+                        <span className="data-label">AGENT STATUS:</span>
+                        <span className={`badge ${badgeClass}`}>{m.status}</span>
+                      </div>
+                      
+                      <div className="card-details">
+                        <div className="data-row">
+                          <span className="data-label">PRIORITY:</span>
+                          <span className="data-value">P{m.priority}</span>
+                        </div>
+                        <div className="data-row">
+                          <span className="data-label">CREATED:</span>
+                          <span className="data-value">{new Date(m.createdAt).toLocaleString()}</span>
+                        </div>
+                        <div className="data-row">
+                          <span className="data-label">ID:</span>
+                          <span className="data-value" style={{fontFamily: 'monospace', fontSize: '10px'}}>{m.id.substring(0, 8)}</span>
+                        </div>
+                        <div className="data-row">
+                          <span className="data-label">TASKS:</span>
+                          <span className="data-value">{m._count?.tasks ?? 0} total</span>
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                </div>
+              );
+            })}
+          </div>
         )}
-      </div>
-
-      <div style={{ marginTop: 12, fontSize: 12, color: "var(--text2)" }}>
-        {pagination.total} total missions
       </div>
     </div>
   );
