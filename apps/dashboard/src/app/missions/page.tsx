@@ -2,11 +2,7 @@ import Link from "next/link";
 import { ResetMissionsButton } from "./ResetMissionsButton";
 import { formatDateTimeCDMX } from "../lib/datetime";
 
-const API_URL = process.env.API_INTERNAL_URL ?? process.env.NEXT_PUBLIC_API_URL;
-
-if (!API_URL) {
-  throw new Error("Missing API URL. Set API_INTERNAL_URL or NEXT_PUBLIC_API_URL.");
-}
+const API_URL = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 interface Mission {
   id: string;
@@ -47,19 +43,13 @@ function getFlowProgress(status: string) {
   return { currentStep: normalized, completedIndex: 0 };
 }
 
-export default async function MissionsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ sort?: string }>;
-}) {
-  const params = await searchParams;
+export default async function MissionsPage() {
   const { data: missions } = await getMissions();
 
-  const isAscending = params.sort === "asc";
-  const sortedMissions = [...(missions as Mission[])].sort((a, b) => {
+  const sortedMissions = [...(missions || [])].sort((a, b) => {
     const timeA = new Date(a.createdAt).getTime();
     const timeB = new Date(b.createdAt).getTime();
-    return isAscending ? timeA - timeB : timeB - timeA;
+    return timeB - timeA;
   });
 
   return (
@@ -72,15 +62,6 @@ export default async function MissionsPage({
             NEW MISSION
           </Link>
         </div>
-      </div>
-
-      <div className="filters">
-        <Link 
-          href={`/missions?sort=${isAscending ? "desc" : "asc"}`} 
-          className="filter-btn active"
-        >
-          DATE {isAscending ? "↑" : "↓"}
-        </Link>
       </div>
 
       <div className="diagram-canvas">

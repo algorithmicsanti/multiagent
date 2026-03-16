@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Orbitron:wght@400;700;900&display=swap');
+﻿@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Orbitron:wght@400;700;900&display=swap');
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -416,49 +416,49 @@ h1, h2, h3, h4, .navbar-brand, .page-title, .card-title {
   box-shadow: 0 0 0 3px rgba(91, 66, 243, 0.1);
 }
 
- 
- / *   M o b i l e   R e s p o n s i v e n e s s   * / 
- @ m e d i a   ( m a x - w i d t h :   7 6 8 p x )   { 
-     . n a v b a r   { 
-         f l e x - d i r e c t i o n :   c o l u m n ; 
-         p a d d i n g :   1 2 p x   2 0 p x ; 
-         g a p :   1 6 p x ; 
-         h e i g h t :   a u t o ; 
-     } 
-     . m a i n - c o n t e n t   { 
-         p a d d i n g :   2 0 p x ; 
-     } 
-     . p a g e - h e a d e r   { 
-         f l e x - d i r e c t i o n :   c o l u m n ; 
-         a l i g n - i t e m s :   f l e x - s t a r t ; 
-         g a p :   1 6 p x ; 
-     } 
-     . p a g e - h e a d e r   >   d i v   { 
-         w i d t h :   1 0 0 % ; 
-         d i s p l a y :   f l e x ; 
-         f l e x - d i r e c t i o n :   c o l u m n ; 
-     } 
-     . g r i d - 2   { 
-         g r i d - t e m p l a t e - c o l u m n s :   1 f r   ! i m p o r t a n t ; 
-     } 
-     . m i s s i o n s - f l o w   { 
-         p a d d i n g :   0   1 0 p x ; 
-     } 
-     . m i s s i o n - n o d e ,   . c o n n e c t i o n - l i n e . v e r t i c a l   { 
-         m a r g i n - l e f t :   0 ; 
-     } 
-     . i s o m e t r i c - c a r d   { 
-         p a d d i n g :   1 6 p x ; 
-     } 
-     . h o v e r - f l o w - s t e p s   { 
-         f l e x - w r a p :   w r a p ; 
-         g a p :   8 p x ; 
-     } 
-     . b t n ,   . f i l t e r - b t n   { 
-         w i d t h :   1 0 0 % ; 
-         t e x t - a l i g n :   c e n t e r ; 
-         j u s t i f y - c o n t e n t :   c e n t e r ; 
-     } 
- } 
-  
- 
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .navbar {
+    flex-direction: column;
+    padding: 12px 20px;
+    gap: 16px;
+    height: auto;
+  }
+  .main-content {
+    padding: 20px;
+  }
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  .page-header > div {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  .grid-2 {
+    grid-template-columns: 1fr !important;
+  }
+  .missions-flow {
+    padding: 0 10px;
+  }
+  .mission-node, .connection-line.vertical {
+    margin-left: 0;
+  }
+  .isometric-card {
+    padding: 16px;
+  }
+  .hover-flow-steps {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .btn, .filter-btn {
+    width: 100%;
+    text-align: center;
+    justify-content: center;
+  }
+}
+
+
