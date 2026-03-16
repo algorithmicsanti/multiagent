@@ -20,6 +20,16 @@ async function getMissionEvents(id: string) {
   return res.json();
 }
 
+async function getArtifactContent(id: string) {
+  try {
+    const res = await fetch(`${API_URL}/api/v1/artifacts/${id}/content`, { cache: "no-store" });
+    if (!res.ok) return null;
+    return await res.text();
+  } catch (e) {
+    return null;
+  }
+}
+
 function extractRequestedFormat(mission: { metadata?: unknown }) {
   const metadata = mission.metadata;
   if (!metadata || typeof metadata !== "object") return null;
@@ -73,6 +83,11 @@ export default async function MissionDetailPage({ params }: { params: Promise<{ 
   const latestArtifact = mission.artifacts?.[0] ?? null;
   const eventSummary = extractSummaryFromEvents(events as Array<{ payload: unknown }>);
 
+  let artifactContent = null;
+  if (latestArtifact) {
+    artifactContent = await getArtifactContent(latestArtifact.id);
+  }
+
   return (
     <div className="main-content">
       <div className="page-header">
@@ -88,34 +103,31 @@ export default async function MissionDetailPage({ params }: { params: Promise<{ 
       </div>
 
       {isCompleted && (
-        <div className="isometric-card" style={{ marginBottom: 28, borderLeft: "3px solid var(--green)" }}>
-          <h3 className="card-title" style={{ color: "var(--green)", marginBottom: 12 }}>FINAL RESULT</h3>
-          <div className="data-row" style={{ marginBottom: 10 }}>
-            <span className="data-label">REQUESTED FORMAT:</span>
-            <span className="data-value">{requestedFormat ?? (latestArtifact?.artifactType ?? "N/A")}</span>
+        <div style={{ marginBottom: 40 }}>
+          <h3 className="page-title" style={{ fontSize: "14px", marginTop: "0", marginBottom: "16px" }}>FINAL RESULT</h3>
+          
+          <div className="isometric-card" style={{ padding: 24, borderTop: "3px solid var(--accent)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}>
+              <span className="data-label">REPORT SUMMARY</span>
+              <span className="badge badge-done">{latestArtifact?.artifactType ?? requestedFormat ?? "OUTPUT"}</span>
+            </div>
+
+            {artifactContent ? (
+              <pre style={{ color: "var(--text)", fontSize: 13, lineHeight: 1.6, whiteSpace: "pre-wrap", background: "rgba(0,0,0,0.2)", padding: 16, border: "1px solid var(--border)", fontFamily: "monospace" }}>
+                 {artifactContent}
+              </pre>
+            ) : eventSummary ? (
+              <div style={{ color: "var(--text)", fontSize: 13, lineHeight: 1.6 }}>
+                 {eventSummary}
+              </div>
+            ) : (
+                <p className="data-label">No summary was provided by the agents.</p>
+            )}
+
+            <div style={{ marginTop: "24px", paddingTop: "16px", borderTop: "1px dashed var(--border)", fontSize: "11px", color: "var(--text2)", display: "flex", justifyContent: "space-between" }}>
+                 <span>Source artifact: <code>{latestArtifact?.pathOrUrl ?? "Not available"}</code></span>
+            </div>
           </div>
-
-          {latestArtifact ? (
-            <div style={{ background: "rgba(0, 0, 0, 0.28)", border: "1px solid var(--border)", padding: 14, borderRadius: 4 }}>
-              <div className="data-row" style={{ marginBottom: 8 }}>
-                <span className="data-label">OUTPUT TYPE:</span>
-                <span className="badge badge-done">{latestArtifact.artifactType}</span>
-              </div>
-              <div className="data-label" style={{ marginBottom: 4 }}>RESULT</div>
-              <div className="data-value" style={{ fontFamily: "monospace", wordBreak: "break-all" }}>
-                {latestArtifact.pathOrUrl}
-              </div>
-            </div>
-          ) : (
-            <p className="data-label">No artifact was produced for this mission.</p>
-          )}
-
-          {eventSummary && (
-            <div style={{ marginTop: 14 }}>
-              <div className="data-label" style={{ marginBottom: 4 }}>SUMMARY</div>
-              <div className="data-value">{eventSummary}</div>
-            </div>
-          )}
         </div>
       )}
 
