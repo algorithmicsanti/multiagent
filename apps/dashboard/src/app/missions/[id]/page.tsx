@@ -68,6 +68,41 @@ function getTaskRouting(metadata: unknown) {
   return { originalAgentType, executionAgentType };
 }
 
+function renderEventMessage(eventType: string, payload: any) {
+  if (!payload || typeof payload !== 'object') return JSON.stringify(payload);
+
+  switch (eventType) {
+    case 'MISSION_CREATED':
+      return `Misión "${payload.title || 'Nueva'}" registrada en el sistema por el operador ${payload.createdBy || 'desconocido'}.`;
+    case 'MISSION_PLANNING':
+      return `El Orquestador Central está analizando los requisitos para trazar un plan de ejecución.`;
+    case 'PLAN_GENERATED':
+      return `El plan estratégico ha sido definido exitosamente con las siguientes fases metodológicas: ${payload.notes || 'Tareas definidas'}.`;
+    case 'MISSION_DISPATCHING':
+      return `Asignando tareas a los agentes especialistas requeridos...`;
+    case 'TASK_ENQUEUED':
+      return `Una nueva tarea ha sido delegada y puesta en espera. El agente de tipo ${payload.executionAgentType || payload.requestedAgentType || 'desconocido'} tomará el control pronto.`;
+    case 'TASK_STARTED':
+      return `El agente asignado ha comenzado a trabajar en la tarea activa.`;
+    case 'TASK_COMPLETED':
+      return `El agente finalizó el procesamiento de la tarea con éxito.`;
+    case 'TASK_FAILED':
+      return `El agente encontró un error durante la ejecución: ${payload.error || payload.reason || 'Causa desconocida'}`;
+    case 'MISSION_COMPLETED':
+    case 'MISSION_DONE':
+      return `Todas las tareas fueron completadas. La misión ha finalizado con éxito.`;
+    case 'MISSION_FAILED':
+      return `La misión abortó su curso debido a un fallo crítico: ${payload.error || payload.reason || 'Desconocido'}`;
+    case 'ARTIFACT_CREATED':
+      return `Un agente generó un nuevo documento o artefacto de salida.`;
+    default:
+      if (payload.message) return payload.message;
+      if (payload.notes) return payload.notes;
+      if (payload.summary) return payload.summary;
+      return JSON.stringify(payload);
+  }
+}
+
 export default async function MissionDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const [mission, events] = await Promise.all([getMission(id), getMissionEvents(id)]);
@@ -271,8 +306,8 @@ export default async function MissionDetailPage({ params }: { params: Promise<{ 
                 <div style={{ minWidth: 180, fontSize: 11, fontWeight: 600, color: "var(--accent)", letterSpacing: 1 }}>
                   {e.eventType}
                 </div>
-                <div style={{ flex: 1, fontSize: 11, color: "var(--text2)", fontFamily: "monospace", overflowX: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {JSON.stringify(e.payload)}
+                <div style={{ flex: 1, fontSize: 12, color: "var(--text)", lineHeight: 1.5, textOverflow: "ellipsis", overflow: "hidden" }}>
+                  {renderEventMessage(e.eventType, e.payload)}
                 </div>
               </div>
             ))}
