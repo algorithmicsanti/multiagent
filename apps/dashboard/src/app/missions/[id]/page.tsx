@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-const API_URL = process.env.API_INTERNAL_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
 async function getMission(id: string) {
   const res = await fetch(`${API_URL}/api/v1/missions/${id}`, { cache: "no-store" });
@@ -16,7 +16,8 @@ async function getMissionEvents(id: string) {
 }
 
 function StatusBadge({ status }: { status: string }) {
-  return <span className={`badge badge-${status.toLowerCase()}`}>{status}</span>;
+  const badgeClass = `badge-${status.toLowerCase()}`;
+  return <span className={`badge ${badgeClass}`}>{status}</span>;
 }
 
 export default async function MissionDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -26,43 +27,63 @@ export default async function MissionDetailPage({ params }: { params: Promise<{ 
   if (!mission) notFound();
 
   return (
-    <div>
+    <div className="main-content">
       <div className="page-header">
         <div>
-          <div style={{ marginBottom: 4 }}>
-            <Link href="/missions" style={{ color: "var(--text2)", textDecoration: "none", fontSize: 13 }}>
-              Missions
+          <div style={{ marginBottom: 8, display: "flex", alignItems: "center", gap: "8px" }}>
+            <Link href="/missions" style={{ textDecoration: "none", fontSize: 11, letterSpacing: 1, textTransform: "uppercase", color: "var(--accent)" }}>
+              ◄ BACK TO NETWORK
             </Link>
-            <span style={{ color: "var(--text2)", margin: "0 6px" }}>/</span>
-            <span style={{ fontSize: 13 }}>{mission.title}</span>
           </div>
           <h1 className="page-title">{mission.title}</h1>
         </div>
         <StatusBadge status={mission.status} />
       </div>
 
-      <div className="grid-2" style={{ marginBottom: 20 }}>
-        <div className="card">
-          <h3 style={{ fontSize: 13, fontWeight: 600, marginBottom: 10, color: "var(--text2)" }}>MISSION INFO</h3>
-          <p style={{ fontSize: 13, color: "var(--text2)", marginBottom: 12 }}>{mission.description}</p>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontSize: 12 }}>
-            <div><span style={{ color: "var(--text2)" }}>Priority:</span> P{mission.priority}</div>
-            <div><span style={{ color: "var(--text2)" }}>Created by:</span> {mission.createdBy}</div>
-            <div><span style={{ color: "var(--text2)" }}>Created:</span> {new Date(mission.createdAt).toLocaleString()}</div>
-            {mission.budgetLimit && <div><span style={{ color: "var(--text2)" }}>Budget:</span> ${mission.budgetLimit}</div>}
+      <div className="agent-status-banner">
+        <div className="pulse"></div>
+        <span><strong>SysInfo:</strong> Detailed telemetry for Node ID [{mission.id}]</span>
+      </div>
+
+      <div className="grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "32px", marginBottom: "40px" }}>
+        <div className="isometric-card" style={{ height: "100%" }}>
+          <h3 className="card-title" style={{ color: "var(--accent)", borderBottom: "1px solid var(--border)", paddingBottom: "12px", marginBottom: "16px" }}>MISSION DIRECTIVE</h3>
+          <p style={{ fontSize: 13, color: "var(--text)", marginBottom: 20, fontStyle: "italic" }}>"{mission.description}"</p>
+          
+          <div className="card-details" style={{ display: "block", marginTop: 0, paddingTop: 16, borderTop: "1px dashed var(--border)" }}>
+            <div className="data-row">
+              <span className="data-label">PRIORITY:</span>
+              <span className="data-value" style={{ color: "var(--accent)" }}>Level {mission.priority}</span>
+            </div>
+            <div className="data-row">
+              <span className="data-label">OPERATOR:</span>
+              <span className="data-value">{mission.createdBy}</span>
+            </div>
+            <div className="data-row">
+              <span className="data-label">TIME_START:</span>
+              <span className="data-value">{new Date(mission.createdAt).toLocaleString()}</span>
+            </div>
+            {mission.budgetLimit && (
+              <div className="data-row">
+                <span className="data-label">RESTRICTION (BUDGET):</span>
+                <span className="data-value" style={{ color: "var(--yellow)" }}>${mission.budgetLimit}</span>
+              </div>
+            )}
           </div>
         </div>
 
-        <div className="card">
-          <h3 style={{ fontSize: 13, fontWeight: 600, marginBottom: 10, color: "var(--text2)" }}>ARTIFACTS ({mission.artifacts?.length ?? 0})</h3>
+        <div className="isometric-card" style={{ height: "100%" }}>
+          <h3 className="card-title" style={{ color: "var(--accent)", borderBottom: "1px solid var(--border)", paddingBottom: "12px", marginBottom: "16px" }}>
+            ATTACHED ARTIFACTS [{mission.artifacts?.length ?? 0}]
+          </h3>
           {mission.artifacts?.length === 0 ? (
-            <p style={{ color: "var(--text2)", fontSize: 12 }}>No artifacts yet</p>
+            <p className="data-label" style={{ textAlign: "center", marginTop: "30px" }}>NO ARTIFACTS DETECTED</p>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {mission.artifacts?.map((a: { id: string; artifactType: string; pathOrUrl: string }) => (
-                <div key={a.id} style={{ fontSize: 12, display: "flex", gap: 8, alignItems: "center" }}>
-                  <span className={`badge badge-${a.artifactType.toLowerCase()}`}>{a.artifactType}</span>
-                  <span style={{ color: "var(--text2)", fontFamily: "monospace" }}>{a.pathOrUrl}</span>
+                <div key={a.id} style={{ display: "flex", flexDirection: "column", gap: 6, background: "rgba(0,0,0,0.2)", padding: "12px", borderLeft: "2px solid var(--accent)" }}>
+                  <span className={`badge badge-${a.artifactType.toLowerCase()}`} style={{ alignSelf: "flex-start", fontSize: 9 }}>{a.artifactType}</span>
+                  <span className="data-value" style={{ fontFamily: "monospace", fontSize: 11, wordBreak: "break-all" }}>{a.pathOrUrl}</span>
                 </div>
               ))}
             </div>
@@ -70,52 +91,78 @@ export default async function MissionDetailPage({ params }: { params: Promise<{ 
         </div>
       </div>
 
-      <div className="card" style={{ marginBottom: 20 }}>
-        <h3 style={{ fontSize: 13, fontWeight: 600, marginBottom: 16, color: "var(--text2)" }}>TASKS ({mission.tasks?.length ?? 0})</h3>
+      <h3 className="page-title" style={{ fontSize: "14px", marginTop: "60px", marginBottom: "24px" }}>
+        EXECUTION NODES [{mission.tasks?.length ?? 0}]
+      </h3>
+      
+      <div className="diagram-canvas">
         {mission.tasks?.length === 0 ? (
-          <p style={{ color: "var(--text2)", fontSize: 12 }}>No tasks yet. The orchestrator will generate tasks once the mission is picked up.</p>
+          <div className="empty-state">
+            <p>AWAITING ORCHESTRATOR ALLOCATION...</p>
+          </div>
         ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Title</th>
-                <th>Agent</th>
-                <th>Status</th>
-                <th>Retries</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {mission.tasks?.map((t: { id: string; title: string; agentType: string; status: string; retries: number; requiresApproval: boolean }) => (
-                <tr key={t.id}>
-                  <td>{t.title}</td>
-                  <td><span className="badge badge-planning">{t.agentType}</span></td>
-                  <td><StatusBadge status={t.status} /></td>
-                  <td style={{ color: "var(--text2)", fontSize: 12 }}>{t.retries}</td>
-                  <td>
-                    <Link href={`/missions/${id}/tasks/${t.id}`} className="link" style={{ fontSize: 12 }}>
-                      View runs
-                    </Link>
-                    {t.requiresApproval && <span className="badge badge-waiting_approval" style={{ marginLeft: 8 }}>needs approval</span>}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="missions-flow">
+            {mission.tasks?.map((t: { id: string; title: string; agentType: string; status: string; retries: number; requiresApproval: boolean }, index: number) => (
+              <div key={t.id} className="mission-node">
+                <div className="connection-line vertical"></div>
+                <div className="isometric-card" style={{ borderLeft: `2px solid ${t.requiresApproval ? "var(--yellow)" : "var(--accent)"}` }}>
+                  <div className="card-header" style={{ marginBottom: 8, paddingBottom: 8 }}>
+                    <span className="badge badge-planning">{t.agentType} CORE</span>
+                  </div>
+                  
+                  <div style={{ marginBottom: 12, fontSize: 13, fontWeight: 500, color: "#fff" }}>
+                    {t.title}
+                  </div>
+                  
+                  <div className="data-row">
+                    <span className="data-label">STATE:</span>
+                    <StatusBadge status={t.status} />
+                  </div>
+                  
+                  <div className="card-details" style={{ display: "block", marginTop: 12, paddingTop: 12 }}>
+                    <div className="data-row">
+                      <span className="data-label">ERRORS:</span>
+                      <span className="data-value" style={{ color: t.retries > 0 ? "var(--red)" : "inherit"}}>{t.retries} count</span>
+                    </div>
+                    {t.requiresApproval && (
+                      <div className="data-row">
+                        <span className="data-label">BLOCKER:</span>
+                        <span className="badge badge-waiting_approval" style={{ animation: "pulsey 2s infinite" }}>HUMAN APPROVAL REQ</span>
+                      </div>
+                    )}
+                    <div style={{ marginTop: 16 }}>
+                      <Link href={`/missions/${id}/tasks/${t.id}`} className="btn" style={{ width: "100%", justifyContent: "center" }}>
+                        ACCESS LOGS / RUNS
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </div>
 
-      <div className="card">
-        <h3 style={{ fontSize: 13, fontWeight: 600, marginBottom: 16, color: "var(--text2)" }}>EVENT TIMELINE ({events.length})</h3>
+      <h3 className="page-title" style={{ fontSize: "14px", marginTop: "60px", marginBottom: "24px" }}>
+        SYSTEM EVENT STREAM [{events.length}]
+      </h3>
+      
+      <div className="isometric-card" style={{ padding: 0, overflow: "hidden" }}>
         {events.length === 0 ? (
-          <p style={{ color: "var(--text2)", fontSize: 12 }}>No events yet</p>
+          <p className="data-label" style={{ textAlign: "center", padding: "40px" }}>NO TELEMETRY AVAILABLE</p>
         ) : (
-          <div className="timeline">
-            {events.map((e: { id: string; eventType: string; createdAt: string; payload: unknown }) => (
-              <div key={e.id} className="timeline-item">
-                <span className="timeline-time">{new Date(e.createdAt).toLocaleTimeString()}</span>
-                <span className="timeline-type">{e.eventType}</span>
-                <span className="timeline-payload">{JSON.stringify(e.payload).slice(0, 120)}</span>
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            {events.map((e: { id: string; eventType: string; createdAt: string; payload: unknown }, i: number) => (
+              <div key={e.id} style={{ display: "flex", padding: "16px 20px", borderBottom: i === events.length - 1 ? "none" : "1px solid rgba(255,255,255,0.05)", background: i % 2 === 0 ? "rgba(0,0,0,0.2)" : "transparent" }}>
+                <div style={{ minWidth: 100, fontSize: 11, color: "var(--text2)", fontFamily: "monospace" }}>
+                  {new Date(e.createdAt).toLocaleTimeString()}
+                </div>
+                <div style={{ minWidth: 180, fontSize: 11, fontWeight: 600, color: "var(--accent)", letterSpacing: 1 }}>
+                  {e.eventType}
+                </div>
+                <div style={{ flex: 1, fontSize: 11, color: "var(--text2)", fontFamily: "monospace", overflowX: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {JSON.stringify(e.payload)}
+                </div>
               </div>
             ))}
           </div>
