@@ -47,7 +47,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: ["pnpm", "--filter", "@wm/api", "dev"]
+    command: ["node", "apps/api/dist/main.mjs"]
 
   orchestrator:
     build:
