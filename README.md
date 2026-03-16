@@ -92,6 +92,21 @@ curl http://localhost:3001/api/v1/health
 - Dashboard: `http://localhost:3000/missions`
 - API health: `http://localhost:3001/api/v1/health`
 
+#### Novedades UI operativas (dashboard)
+
+Se agregaron controles y comportamiento nuevos para operación diaria:
+
+1. Botón `RESET MISSIONS` en la vista de misiones:
+   - Borra todas las misiones y sus dependencias (tasks, runs, approvals, artifacts, events).
+   - Endpoints soportados:
+     - Real API: `DELETE /api/v1/missions`
+     - Mock API: `DELETE /api/v1/missions`
+2. Hover de misión simplificado:
+   - Solo muestra `CREATED`, un mini diagrama de pipeline y `NOW` (estado actual).
+3. Vista de detalle al hacer click:
+   - Si la misión está `DONE`, se muestra primero `FINAL RESULT`.
+   - Debajo quedan los detalles técnicos (tasks, eventos, artefactos).
+
 #### Qué observar para confirmar que backend/agentes están trabajando
 1. En dashboard (`/missions`), cambios de estado de misiones/tareas.
 2. En logs de API, requests desde dashboard (`GET /api/v1/missions`, etc.).
@@ -165,6 +180,119 @@ docker compose -f infra/compose/docker-compose.dev.yml logs --tail=200 api orche
 Regla operativa:
 - `mock-api.mjs` solo se usa para demos locales sin Docker.
 - En VPS con Docker, el modo correcto es siempre `pnpm infra:up` + `pnpm db:migrate`.
+
+#### Runbook para OpenClaw: si el dashboard local no refleja las misiones reales
+
+Síntoma típico:
+- OpenClaw crea misiones reales y en logs de `api` / `orchestrator` se ve `Planning mission...` y creación de `Task`.
+- Pero en `http://localhost:3000/missions` no aparecen esas misiones o aparece otra lista distinta.
+- Los indicadores del dashboard muestran `API` verde pero `DB` y `QUEUE` no coinciden con el estado esperado.
+
+Causa raíz más probable:
+- El dashboard local está apuntando a un backend distinto al de OpenClaw/VPS.
+- Normalmente ocurre porque no se configuró `NEXT_PUBLIC_API_URL` / `API_INTERNAL_URL` con la URL real.
+- También puede pasar si el operador tiene un `mock-api.mjs` local en el puerto `3001`.
+
+Cómo debe diagnosticar OpenClaw:
+```bash
+cd /home/santiago/projects/multiagent
+
+# 1) Ver qué endpoint usa el dashboard local
+grep -n "NEXT_PUBLIC_API_URL\|API_INTERNAL_URL" .env || true
+
+# 2) Ver si localhost:3001 responde algo tipo mock
+curl -s http://localhost:3001/api/v1/health
+curl -s http://localhost:3001/api/v1/missions
+```
+
+Interpretación del diagnóstico:
+- Si `/api/v1/health` devuelve `db: "ok (mock)"` o `redis: "ok (mock)"`, la UI local está leyendo el mock.
+- Si la lista de `/api/v1/missions` no coincide con lo que se ve en logs de Docker, la UI está apuntando al backend equivocado.
+- Si faltan `NEXT_PUBLIC_API_URL` / `API_INTERNAL_URL`, el dashboard fallará explícitamente (ya no hay fallback silencioso).
+
+Corrección obligatoria que OpenClaw debe aplicar:
+1. Detener cualquier `mock-api.mjs` local.
+2. Configurar explícitamente el dashboard para leer la API real.
+3. Reiniciar el dashboard para que cargue el `.env` nuevo.
+
+Caso A: usar la API real expuesta directamente por la VPS
+```bash
+cd /home/santiago/projects/multiagent
+
+# Detener mock local si existe
+pkill -f "node mock-api.mjs" || true
+
+# Configurar dashboard para apuntar al backend real
+sed -i '/^NEXT_PUBLIC_API_URL=/d' .env
+sed -i '/^API_INTERNAL_URL=/d' .env
+echo 'NEXT_PUBLIC_API_URL=http://<IP_O_DOMINIO_VPS>:3001' >> .env
+echo 'API_INTERNAL_URL=http://<IP_O_DOMINIO_VPS>:3001' >> .env
+
+# Reiniciar dashboard local si corre fuera de Docker
+pkill -f "next dev" || true
+pnpm --filter @wm/dashboard dev
+```
+
+Ejemplo real actual de esta operación:
+```bash
+echo 'NEXT_PUBLIC_API_URL=http://93.188.160.48:3001' >> .env
+echo 'API_INTERNAL_URL=http://93.188.160.48:3001' >> .env
+```
+
+Caso B: usar túnel SSH y mantener `localhost:3001`
+```bash
+# En la máquina local del operador
+ssh -L 3000:localhost:3000 -L 3001:localhost:3001 <usuario>@<IP_VPS>
+```
+
+Luego OpenClaw debe asegurar que NO quede mock corriendo en local:
+```bash
+pkill -f "node mock-api.mjs" || true
+curl -s http://localhost:3001/api/v1/health
+```
+
+Validación final que OpenClaw debe hacer:
+```bash
+curl -s http://localhost:3001/api/v1/health
+curl -s http://localhost:3001/api/v1/missions
+```
+
+Resultado esperado:
+1. El health ya no debe contener `ok (mock)`.
+2. La lista de misiones debe coincidir con lo que aparece en logs de `api` y `orchestrator`.
+3. El dashboard local debe reflejar las misiones reales creadas por OpenClaw.
+
+#### Frontend local: comandos exactos para correr contra OpenClaw remoto
+
+Ejecutar en la máquina local del operador (Windows/Powershell):
+
+```powershell
+cd C:\Users\germa\Documents\GitHub\multiagent
+
+# 1) Asegurar dependencias
+pnpm install
+
+# 2) Configurar URL remota de API (OpenClaw VPS)
+# En .env deben existir estas dos líneas:
+# NEXT_PUBLIC_API_URL=http://93.188.160.48:3001
+# API_INTERNAL_URL=http://93.188.160.48:3001
+
+# 3) Levantar frontend
+pnpm --filter @wm/dashboard dev
+
+# 4) Abrir
+# http://localhost:3000/missions
+```
+
+Checklist rápido si no ves cambios:
+1. Reiniciar `pnpm --filter @wm/dashboard dev` después de cambiar `.env`.
+2. Verificar `http://93.188.160.48:3001/api/v1/health` responde `status=ok`.
+3. Confirmar que NO hay `mock-api.mjs` corriendo local en `3001`.
+
+Nota importante:
+- Que `DB` y `QUEUE` se vean en rojo en la UI local no explica por sí solo la ausencia de misiones.
+- El problema crítico es a qué backend está apuntando el dashboard.
+- Primero corregir el endpoint. Luego, si hace falta, revisar el rendering del health.
 
 ### Política de ramas operativas (evitar choques con Copilot)
 
@@ -2096,6 +2224,37 @@ Nota: si los logs muestran `+29 lines` o fragmentos truncados, eso suele ser com
 ```bash
 docker compose -f infra/compose/docker-compose.dev.yml logs -f api orchestrator worker-research dashboard
 ```
+
+### Fix aplicado: `page.tsx:7 fetch failed` en detalle de misión
+
+Causa: las páginas SSR de detalle estaban usando `NEXT_PUBLIC_API_URL` (que en contenedor puede resolver a `localhost` incorrecto).
+
+Fix: usar fallback interno en server-side pages del dashboard:
+
+```ts
+const API_URL = process.env.API_INTERNAL_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+```
+
+Archivos corregidos:
+- `apps/dashboard/src/app/missions/[id]/page.tsx`
+- `apps/dashboard/src/app/missions/[id]/tasks/[taskId]/page.tsx`
+
+### Notificación a Telegram al terminar/fallar misión (orchestrator)
+
+Se agregó notificación automática desde `orchestrator` para estados clave:
+- `FAILED`
+- `REVIEWING`
+
+Variables requeridas en `.env`:
+
+```env
+TELEGRAM_BOT_TOKEN=<token del bot>
+TELEGRAM_CHAT_ID=<chat id destino>
+```
+
+Implementación:
+- `services/orchestrator/src/telegram.ts`
+- hooks en `services/orchestrator/src/main.ts` y `services/orchestrator/src/state-machine.ts`
 
 ### Reintento verificado (2026-03-16 02:27 UTC)
 

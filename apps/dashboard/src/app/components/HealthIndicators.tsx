@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 
 export function HealthIndicators() {
+  const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
   const [health, setHealth] = useState<{ status: string; db: string; redis: string }>({
     status: "loading",
     db: "loading",
@@ -10,12 +12,16 @@ export function HealthIndicators() {
   });
 
   useEffect(() => {
-    const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+    if (!API_URL) {
+      setHealth({ status: "error", db: "error", redis: "error" });
+      return;
+    }
+
     fetch(`${API_URL}/api/v1/health`)
       .then((res) => res.json())
       .then((data) => setHealth(data))
       .catch(() => setHealth({ status: "error", db: "error", redis: "error" }));
-  }, []);
+  }, [API_URL]);
 
   const getStatusColor = (status: string) => {
     if (status === "ok") return "var(--green)";

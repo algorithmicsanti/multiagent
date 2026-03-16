@@ -1,7 +1,11 @@
 "use client";
 import { useState, useEffect } from "react";
 
-const API_URL = process.env.API_INTERNAL_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
+if (!API_URL) {
+  throw new Error("Missing NEXT_PUBLIC_API_URL for dashboard client requests.");
+}
 
 interface Approval {
   id: string;

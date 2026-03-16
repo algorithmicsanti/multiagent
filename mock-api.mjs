@@ -297,6 +297,15 @@ const server = createServer((req, res) => {
       });
     }
 
+    // DELETE /missions (reset all)
+    if (method === "DELETE" && path === "/api/v1/missions") {
+      MISSIONS.splice(0, MISSIONS.length);
+      APPROVALS.splice(0, APPROVALS.length);
+      for (const key of Object.keys(EVENTS)) delete EVENTS[key];
+      for (const key of Object.keys(TASK_RUNS)) delete TASK_RUNS[key];
+      return json(res, { ok: true, deleted: "all" });
+    }
+
     // GET /missions/:id
     const missionMatch = path.match(/^\/api\/v1\/missions\/([^/]+)$/);
     if (method === "GET" && missionMatch) {
