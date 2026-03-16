@@ -27,53 +27,59 @@ async function getArtifactContent(id: string) {
   }
 }
 
+function parseMarkdownToHTML(text: string) {
+  // Un conversor muy simple de Markdown a HTML para evitar tags <pre> y JSONs feos
+  let html = text
+    // Blockquotes
+    .replace(/^> (.*$)/gim, '<blockquote>$1</blockquote>')
+    // Headers
+    .replace(/^### (.*$)/gim, '<h4 style="margin-top: 16px; margin-bottom: 8px; color: var(--accent);">$1</h4>')
+    .replace(/^## (.*$)/gim, '<h3 style="margin-top: 20px; margin-bottom: 10px; color: var(--accent);">$1</h3>')
+    .replace(/^# (.*$)/gim, '<h2 style="margin-top: 24px; margin-bottom: 12px; color: var(--accent);">$1</h2>')
+    // Bold
+    .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
+    // Italic
+    .replace(/\*(.*?)\*/gim, '<em>$1</em>')
+    // Lists
+    .replace(/^\s*\n\*/gm, '<ul>\n*')
+    .replace(/^(\d+\.) (.*$)/gim, '<div style="margin-bottom: 8px; margin-left: 12px;"><strong>$1</strong> $2</div>')
+    .replace(/^\* (.*$)/gim, '<li style="margin-left: 20px; margin-bottom: 4px;">$1</li>')
+    // Line breaks
+    .replace(/\n$/gim, '<br />')
+    // Code blocks
+    .replace(/```([\s\S]*?)```/gim, '<pre style="background: rgba(0,0,0,0.3); padding: 12px; border-radius: 4px; overflow-x: auto;"><code>$1</code></pre>')
+    // Inline code
+    .replace(/`(.*?)`/gim, '<code style="background: rgba(0,0,0,0.3); padding: 2px 4px; border-radius: 2px;">$1</code>');
+
+  return html;
+}
+
 function formatHumanResult(content: string | null): string {
-  if (!content) return "No summary was provided by the agents.";
+  if (!content) return "El sistema no generó ningún resumen al finalizar la misión.";
 
   const trimmed = content.trim();
   try {
     const parsed = JSON.parse(trimmed) as Record<string, unknown>;
 
-    // We can try to extract clean automation steps from the summary or other places
-    // But since the payload in the screenshot actually has "rawPlan", "summary" and "nextSteps",
-    // We can parse the nextSteps or summary dynamically as human lists.
-    let listContent: string[] = [];
-
-    // If there is an explicit topAutomations array as I wrote before
-    if (Array.isArray(parsed.topAutomations)) {
-      listContent = parsed.topAutomations.slice(0, 5).map((item, idx) => {
-        if (typeof item === 'string') return `${idx + 1}. ${item}`;
-        if (item && typeof item === 'object') {
-            const row = item as Record<string, any>;
-            const title = row.name ?? row.automation ?? row.title ?? `Automatización ${idx + 1}`;
-            const steps = row.steps || row.description || row.impact || 'Implementar según análisis sistémico.';
-            return `${idx + 1}. ${title} — ${steps}`;
-        }
-        return `${idx + 1}. Automatización sugerida`;
-      });
-    } else if (Array.isArray(parsed.nextSteps)) {
-      // Like the payload in the screenshot has "nextSteps"
-      listContent = parsed.nextSteps.map((step, idx) => {
-        if (typeof step === 'string') {
-          // Si el next steps trata de automatizaciones de la tabla
-          return `${idx + 1}. ${step.replace(/^"|"$/g, '').trim()}`;
-        }
-        return `${idx + 1}. Paso operativo definido`;
-      });
-    } else if (typeof parsed.summary === 'string') {
-      listContent = [parsed.summary];
-    } else {
-       listContent = ["El pipeline ha finalizado sin datos tabulares explícitos, consulte los artefactos."];
+    // We avoid showing Orchestrator's internal plans or nextSteps
+    if (parsed.report) return String(parsed.report);
+    if (parsed.markdown) return String(parsed.markdown);
+    if (parsed.content) return String(parsed.content);
+    if (parsed.humanSummary) return String(parsed.humanSummary);
+    
+    // If it's just pure json without text result
+    if (parsed.summary && !parsed.rawPlan) return String(parsed.summary);
+    
+    // If it's a technical payload (like the orchestrator plan)
+    if (parsed.rawPlan || parsed.nextSteps) {
+       return "El documento contiene información de planificación técnica (ver logs). La salida principal está siendo procesada o no tiene un reporte escrito.";
     }
 
-    const summaryStr = typeof parsed.summary === "string" ? parsed.summary + "\n\n" : "";
-
-    return `${summaryStr}${listContent.join("\n")}`;
-
+    // Default fallback if we can't find a text variable
+    return "Resultado en formato técnico (no visualizable en reporte humano).";
   } catch {
-    // Si no es JSON (si ya es texto/markdown puro)
-    const lines = trimmed.split("\n").map((l) => l.trim()).filter(Boolean);
-    return lines.join("\n");
+    // Es texto puro / Markdown
+    return trimmed;
   }
 }
 
@@ -162,7 +168,9 @@ export default async function MissionDetailPage({ params }: { params: Promise<{ 
 
   const isCompleted = mission.status === "DONE";
   const requestedFormat = extractRequestedFormat(mission);
-  const latestArtifact = mission.artifacts?.[0] ?? null;
+  const latestArtifact = mission.artifacts && mission.artifacts.length > 0
+    ? mission.artifacts.slice(-1)[0]
+    : null;
   const eventSummary = extractSummaryFromEvents(events as Array<{ payload: unknown }>);
 
   let artifactContent: string | null = null;
@@ -195,10 +203,16 @@ export default async function MissionDetailPage({ params }: { params: Promise<{ 
               <span className="badge badge-done">{latestArtifact?.artifactType ?? requestedFormat ?? "OUTPUT"}</span>
             </div>
 
-            <div style={{ color: "var(--text)", fontSize: 13, lineHeight: 1.7, background: "rgba(0,0,0,0.2)", padding: 16, border: "1px solid var(--border)", marginBottom: 12 }}>
-              <pre style={{ margin: 0, whiteSpace: "pre-wrap", fontFamily: "inherit" }}>
-                {formattedResult || eventSummary || "No summary was provided by the agents."}
-              </pre>
+            <div style={{ color: "var(--text)", fontSize: 14, lineHeight: 1.6, background: "var(--bg)", padding: "24px 32px", border: "1px solid var(--border)", marginBottom: 12, borderRadius: "8px" }}>
+              <div 
+                dangerouslySetInnerHTML={{ 
+                  __html: parseMarkdownToHTML(formattedResult || eventSummary || "Sin reporte disponible.")
+                }}
+                style={{ 
+                  fontFamily: "var(--font-body), sans-serif",
+                  whiteSpace: "pre-line" // Important for simple newlines inside the text
+                }}
+              />
             </div>
 
             <div style={{ marginTop: "24px", paddingTop: "16px", borderTop: "1px dashed var(--border)", fontSize: "11px", color: "var(--text2)", display: "flex", justifyContent: "space-between" }}>
