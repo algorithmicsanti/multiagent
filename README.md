@@ -2063,3 +2063,37 @@ npx pnpm --filter @wm/dashboard dev
    - `http://localhost:3000/missions` (si corres dashboard local)
    - `http://<IP_VPS>:3000/missions` (si corres dashboard en VPS)
 
+### Incidente real (2026-03-16): dashboard no mostraba pruebas / flujo multiagente
+
+Resumen de lo que pasó y cómo se resolvió:
+
+1. Se crearon varias misiones de validación (`Realtime validation mission ...`) y una misión demo final:
+   - `cmmsitezk000iqn0zec7hqj73` (`Demo flujo multiagente en vivo`).
+2. Al principio, el flujo fallaba en `PLANNING`/`RESEARCH` por credencial inválida de Anthropic (`401 invalid x-api-key`).
+3. Se detectó que en `.env` había placeholder (`sk-ant-...`) en vez de key real.
+4. Tras corregir key y recrear servicios, se validó conectividad directa a Anthropic con `HTTP 200`.
+5. El flujo multiagente volvió a correr (eventos `MISSION_CREATED` -> `MISSION_PLANNING` -> `PLAN_GENERATED` -> `TASK_ENQUEUED` -> `TASK_STARTED`).
+
+#### Si en `/missions` "no aparece" una misión nueva
+
+Checklist rápido:
+
+```bash
+# 1) confirmar en API (fuente de verdad)
+curl 'http://localhost:3001/api/v1/missions?limit=20'
+
+# 2) confirmar que dashboard consulta al API correcto
+docker compose -f infra/compose/docker-compose.dev.yml logs --tail=80 dashboard api
+
+# 3) recargar duro navegador (cache SSR/client)
+# Ctrl+Shift+R
+```
+
+Nota: si los logs muestran `+29 lines` o fragmentos truncados, eso suele ser compactación del visor/salida, no necesariamente error SQL real.
+
+#### Comando recomendado para seguir flujo en vivo
+
+```bash
+docker compose -f infra/compose/docker-compose.dev.yml logs -f api orchestrator worker-research dashboard
+```
+
