@@ -137,46 +137,80 @@ function normalizeMissionPlan(plan: MissionPlan): MissionPlan {
   };
 }
 
+function tryExtractJsonObject(raw: string): string | null {
+  const trimmed = raw.trim();
+
+  const codeBlockMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (codeBlockMatch?.[1]) {
+    return codeBlockMatch[1].trim();
+  }
+
+  const firstBrace = trimmed.indexOf("{");
+  const lastBrace = trimmed.lastIndexOf("}");
+  if (firstBrace >= 0 && lastBrace > firstBrace) {
+    return trimmed.slice(firstBrace, lastBrace + 1).trim();
+  }
+
+  return null;
+}
+
+function parseMissionPlanFromText(text: string): MissionPlan {
+  const candidates = [
+    text.trim(),
+    tryExtractJsonObject(text),
+  ].filter((v): v is string => Boolean(v));
+
+  for (const candidate of candidates) {
+    try {
+      const parsed = JSON.parse(candidate) as MissionPlan;
+      if (parsed && Array.isArray(parsed.tasks)) return parsed;
+    } catch {
+      // try next candidate
+    }
+  }
+
+  throw new Error("Failed to parse mission plan from LLM response");
+}
+
 export async function generateMissionPlan(
   missionTitle: string,
   missionDescription: string
 ): Promise<MissionPlan> {
   log.info({ missionTitle }, "Generating mission plan");
 
-  const message = await client.messages.create({
-    model: "claude-sonnet-4-6",
-    max_tokens: 4096,
-    system: PLANNING_SYSTEM_PROMPT,
-    messages: [
-      {
-        role: "user",
-        content: `Mission Title: ${missionTitle}\n\nMission Description:\n${missionDescription}\n\nGenerate a detailed mission plan as JSON.`,
-      },
-    ],
-  });
+  const maxAttempts = 3;
+  let lastError: Error | null = null;
 
-  const content = message.content[0];
-  if (!content || content.type !== "text") {
-    throw new Error("Unexpected response from LLM");
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const message = await client.messages.create({
+        model: "claude-sonnet-4-6",
+        max_tokens: 4096,
+        system: PLANNING_SYSTEM_PROMPT,
+        messages: [
+          {
+            role: "user",
+            content: `Mission Title: ${missionTitle}\n\nMission Description:\n${missionDescription}\n\nGenerate a detailed mission plan as JSON.${attempt > 1 ? " Return ONLY JSON object, no prose." : ""}`,
+          },
+        ],
+      });
+
+      const content = message.content[0];
+      if (!content || content.type !== "text") {
+        throw new Error("Unexpected response from LLM");
+      }
+
+      const plan = parseMissionPlanFromText(content.text);
+      const normalizedPlan = normalizeMissionPlan(plan);
+      log.info({ missionTitle, taskCount: normalizedPlan.tasks.length, attempt }, "Mission plan generated");
+      return normalizedPlan;
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+      log.warn({ missionTitle, attempt, err: lastError.message }, "Planning attempt failed");
+    }
   }
 
-  // Extract JSON from response (handle markdown code blocks)
-  const text = content.text;
-  const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/) ?? [null, text];
-  const jsonText = jsonMatch[1]?.trim() ?? text.trim();
-
-  let plan: MissionPlan;
-  try {
-    plan = JSON.parse(jsonText) as MissionPlan;
-  } catch {
-    log.error({ text }, "Failed to parse LLM plan response");
-    throw new Error("Failed to parse mission plan from LLM response");
-  }
-
-  const normalizedPlan = normalizeMissionPlan(plan);
-
-  log.info({ missionTitle, taskCount: normalizedPlan.tasks.length }, "Mission plan generated");
-  return normalizedPlan;
+  throw lastError ?? new Error("Planning failed");
 }
 
 export function resolveTaskDependencies(
