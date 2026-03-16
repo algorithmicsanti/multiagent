@@ -65,8 +65,22 @@ function formatHumanResult(content: string | null): string {
     if (parsed.report) return String(parsed.report);
     if (parsed.markdown) return String(parsed.markdown);
     if (parsed.content) return String(parsed.content);
+    if (parsed.rawResearch) return String(parsed.rawResearch);
     if (parsed.humanSummary) return String(parsed.humanSummary);
     
+    // If we have structured findings from the research worker
+    if (Array.isArray(parsed.findings) && parsed.findings.length > 0) {
+      let md = `> ${parsed.summary || 'Investigación Completada'}\n\n### Hallazgos Principales:\n\n`;
+      parsed.findings.forEach((f: any) => {
+        md += `* **${f.area}:** ${f.finding}\n`;
+        if (f.recommendation) md += `  *Recomendación:* ${f.recommendation}\n`;
+      });
+      if (Array.isArray(parsed.risks) && parsed.risks.length > 0) {
+        md += `\n### Riesgos Detectados:\n` + parsed.risks.map(r => `* ${r}`).join('\n') + `\n`;
+      }
+      return md;
+    }
+
     // If it's just pure json without text result
     if (parsed.summary && !parsed.rawPlan) return String(parsed.summary);
     
