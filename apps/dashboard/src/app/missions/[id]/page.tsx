@@ -17,6 +17,14 @@ async function getMissionEvents(id: string) {
   return res.json();
 }
 
+async function getArtifactContent(missionId: string, artifactId: string) {
+  const res = await fetch(`${API_URL}/api/v1/missions/${missionId}/artifacts/${artifactId}/content`, {
+    cache: "no-store",
+  });
+  if (!res.ok) return null;
+  return res.json() as Promise<{ source: string; content: unknown; pathOrUrl: string }>;
+}
+
 function extractRequestedFormat(mission: { metadata?: unknown }) {
   const metadata = mission.metadata;
   if (!metadata || typeof metadata !== "object") return null;
@@ -68,6 +76,9 @@ export default async function MissionDetailPage({ params }: { params: Promise<{ 
   const isCompleted = mission.status === "DONE";
   const requestedFormat = extractRequestedFormat(mission);
   const latestArtifact = mission.artifacts?.[0] ?? null;
+  const latestArtifactContent = latestArtifact
+    ? await getArtifactContent(mission.id, latestArtifact.id)
+    : null;
   const eventSummary = extractSummaryFromEvents(events as Array<{ payload: unknown }>);
 
   return (
@@ -104,6 +115,35 @@ export default async function MissionDetailPage({ params }: { params: Promise<{ 
               </div>
             </div>
           ) : (
+            <p className="data-label">No artifact was produced for this mission.</p>
+          )}
+
+          {latestArtifactContent?.content != null && (
+            <div style={{ marginTop: 12 }}>
+              <div className="data-row" style={{ marginBottom: 8 }}>
+                <span className="data-label">RESULT CONTENT SOURCE:</span>
+                <span className="data-value">{latestArtifactContent.source}</span>
+              </div>
+              <div
+                style={{
+                  background: "rgba(0, 0, 0, 0.28)",
+                  border: "1px solid var(--border)",
+                  padding: 14,
+                  borderRadius: 4,
+                  maxHeight: 360,
+                  overflow: "auto",
+                }}
+              >
+                <pre className="data-value" style={{ margin: 0, whiteSpace: "pre-wrap", fontFamily: "monospace" }}>
+                  {typeof latestArtifactContent.content === "string"
+                    ? latestArtifactContent.content
+                    : JSON.stringify(latestArtifactContent.content, null, 2)}
+                </pre>
+              </div>
+            </div>
+          )}
+
+          {latestArtifact == null && (
             <p className="data-label">No artifact was produced for this mission.</p>
           )}
 

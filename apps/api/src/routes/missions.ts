@@ -2,6 +2,8 @@ import type { FastifyInstance } from "fastify";
 import { prisma } from "@wm/db";
 import { logEvent, EVENT_TYPES } from "@wm/observability";
 import { z } from "zod";
+import { access, readFile } from "node:fs/promises";
+import path from "node:path";
 
 const CreateMissionSchema = z.object({
   title: z.string().min(1).max(255),
@@ -17,6 +19,37 @@ const ListMissionsQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });
+
+function isHttpLike(value: string): boolean {
+  return /^https?:\/\//i.test(value);
+}
+
+async function readArtifactText(pathOrUrl: string): Promise<string | null> {
+  if (!pathOrUrl || isHttpLike(pathOrUrl)) return null;
+
+  const candidates: string[] = [];
+
+  if (path.isAbsolute(pathOrUrl)) {
+    candidates.push(pathOrUrl);
+  } else {
+    candidates.push(
+      path.join("/app", "artifacts", pathOrUrl),
+      path.join("/app", pathOrUrl),
+      path.join("/artifacts", pathOrUrl)
+    );
+  }
+
+  for (const candidate of candidates) {
+    try {
+      await access(candidate);
+      return await readFile(candidate, "utf8");
+    } catch {
+      // try next candidate
+    }
+  }
+
+  return null;
+}
 
 export async function missionsRoutes(server: FastifyInstance) {
   // POST /missions
@@ -189,6 +222,57 @@ export async function missionsRoutes(server: FastifyInstance) {
     });
     return reply.send(artifacts);
   });
+
+  // GET /missions/:id/artifacts/:artifactId/content
+  server.get<{ Params: { id: string; artifactId: string } }>(
+    "/missions/:id/artifacts/:artifactId/content",
+    async (req, reply) => {
+      const artifact = await prisma.artifact.findFirst({
+        where: { id: req.params.artifactId, missionId: req.params.id },
+      });
+
+      if (!artifact) {
+        return reply.status(404).send({ error: "Artifact not found" });
+      }
+
+      const fileText = await readArtifactText(artifact.pathOrUrl);
+      if (fileText !== null) {
+        return reply.send({
+          artifactId: artifact.id,
+          missionId: artifact.missionId,
+          source: "file",
+          pathOrUrl: artifact.pathOrUrl,
+          content: fileText,
+        });
+      }
+
+      const latestRun = artifact.taskId
+        ? await prisma.taskRun.findFirst({
+            where: { taskId: artifact.taskId },
+            orderBy: { startedAt: "desc" },
+            select: { outputPayload: true },
+          })
+        : null;
+
+      if (latestRun?.outputPayload) {
+        return reply.send({
+          artifactId: artifact.id,
+          missionId: artifact.missionId,
+          source: "taskRun",
+          pathOrUrl: artifact.pathOrUrl,
+          content: latestRun.outputPayload,
+        });
+      }
+
+      return reply.send({
+        artifactId: artifact.id,
+        missionId: artifact.missionId,
+        source: "none",
+        pathOrUrl: artifact.pathOrUrl,
+        content: null,
+      });
+    }
+  );
 
   // POST /missions/:id/artifacts
   server.post<{ Params: { id: string } }>("/missions/:id/artifacts", async (req, reply) => {
