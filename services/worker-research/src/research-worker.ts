@@ -3,6 +3,7 @@ import { prisma } from "@wm/db";
 import type { AgentJobPayload, WorkerResult } from "@wm/agent-core";
 import { ArtifactType } from "@wm/agent-core";
 import { logEvent, EVENT_TYPES, createChildLogger } from "@wm/observability";
+import { notifyTaskCompleted } from "./telegram.js";
 
 const log = createChildLogger({ service: "worker-research" });
 
@@ -160,6 +161,14 @@ Produce your research now.`;
     });
 
     log.info({ taskId, durationMs, tokensUsed }, "Research task completed");
+
+    const taskInfo = await prisma.task.findUnique({ where: { id: taskId }, select: { title: true } });
+    await notifyTaskCompleted({
+      missionId,
+      taskId,
+      taskTitle: taskInfo?.title ?? "Research task",
+      summary,
+    });
 
     return {
       status: "completed",

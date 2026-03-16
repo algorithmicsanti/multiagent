@@ -1,14 +1,12 @@
 import { createChildLogger } from "@wm/observability";
 
-const log = createChildLogger({ service: "orchestrator", module: "telegram" });
+const log = createChildLogger({ service: "worker-research", module: "telegram" });
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 
-export async function sendTelegramNotification(text: string): Promise<void> {
-  if (!BOT_TOKEN || !CHAT_ID) {
-    return;
-  }
+async function sendTelegramNotification(text: string): Promise<void> {
+  if (!BOT_TOKEN || !CHAT_ID) return;
 
   try {
     const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
@@ -30,18 +28,6 @@ export async function sendTelegramNotification(text: string): Promise<void> {
   }
 }
 
-export async function notifyMissionStatus(opts: {
-  missionId: string;
-  title?: string;
-  status: string;
-  reason?: string;
-}): Promise<void> {
-  const titlePart = opts.title ? ` (${opts.title})` : "";
-  const reasonPart = opts.reason ? `\nReason: ${opts.reason}` : "";
-  const text = `🤖 Mission ${opts.status}: ${opts.missionId}${titlePart}${reasonPart}`;
-  await sendTelegramNotification(text);
-}
-
 export async function notifyTaskCompleted(opts: {
   missionId: string;
   taskId: string;
@@ -57,24 +43,6 @@ export async function notifyTaskCompleted(opts: {
   ]
     .filter(Boolean)
     .join("\n");
-
-  await sendTelegramNotification(text);
-}
-
-export async function notifyApprovalRequired(opts: {
-  missionId: string;
-  taskId: string;
-  taskTitle: string;
-  agentType: string;
-}): Promise<void> {
-  const text = [
-    "🛑 Human-in-the-loop requerido",
-    `Misión: ${opts.missionId}`,
-    `Task: ${opts.taskId}`,
-    `Agente: ${opts.agentType}`,
-    `Título: ${opts.taskTitle}`,
-    "Acción: Revisar en Dashboard > Approvals y aprobar/rechazar.",
-  ].join("\n");
 
   await sendTelegramNotification(text);
 }

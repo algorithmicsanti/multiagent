@@ -10,6 +10,7 @@ import type { AgentJobPayload } from "@wm/agent-core";
 import { logEvent, EVENT_TYPES, createChildLogger } from "@wm/observability";
 import type { Redis } from "ioredis";
 import { randomUUID } from "crypto";
+import { notifyApprovalRequired } from "./telegram.js";
 
 const log = createChildLogger({ service: "orchestrator", module: "dispatcher" });
 
@@ -48,6 +49,38 @@ export async function dispatchReadyTasks(
   for (const task of pendingTasks) {
     const depsOk = task.dependsOn.every((depId) => completedTaskIds.has(depId));
     if (!depsOk) continue;
+
+    if (task.requiresApproval) {
+      await prisma.task.update({
+        where: { id: task.id },
+        data: { status: TaskStatus.WAITING_APPROVAL },
+      });
+
+      await prisma.approval.create({
+        data: {
+          missionId,
+          taskId: task.id,
+          actionType: "task.execute",
+          requestedBy: "orchestrator",
+          notes: `Approval required before executing task ${task.title}`,
+        },
+      });
+
+      await logEvent(prisma, {
+        eventType: EVENT_TYPES.APPROVAL_REQUESTED,
+        missionId,
+        taskId: task.id,
+        payload: { taskId: task.id, title: task.title, agentType: task.agentType },
+      });
+
+      await notifyApprovalRequired({
+        missionId,
+        taskId: task.id,
+        taskTitle: task.title,
+        agentType: task.agentType,
+      });
+      continue;
+    }
 
     const runId = randomUUID();
 
