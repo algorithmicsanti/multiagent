@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import { formatDateTimeCDMX } from "../lib/datetime";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -68,8 +69,8 @@ export default function ApprovalsPage() {
                   <div style={{ fontSize: 12, color: "var(--text2)" }}>Requested by: {a.requestedBy}</div>
                 </div>
                 <div style={{ fontSize: 11, color: "var(--text2)" }}>
-                  {new Date(a.createdAt).toLocaleString()}
-                  {a.expiresAt && ` • expires ${new Date(a.expiresAt).toLocaleString()}`}
+                  {formatDateTimeCDMX(a.createdAt)}
+                  {a.expiresAt && ` • expires ${formatDateTimeCDMX(a.expiresAt)}`}
                 </div>
               </div>
 

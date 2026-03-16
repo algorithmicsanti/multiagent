@@ -87,6 +87,25 @@ services:
         condition: service_healthy
     command: ["pnpm", "--filter", "@wm/worker-research", "dev"]
 
+  worker-promptops:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.service
+      args:
+        SERVICE: worker-promptops
+    restart: unless-stopped
+    env_file: ../../.env
+    environment:
+      DATABASE_URL: postgresql://wm_user:wm_password@postgres:5432/webmentor_agent_os
+      REDIS_URL: redis://redis:6379
+      NODE_ENV: development
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ["pnpm", "--filter", "@wm/worker-promptops", "dev"]
+
   dashboard:
     build:
       context: ../..

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { formatDateTimeCDMX } from "../../../../lib/datetime";
 
 const API_URL = process.env.API_INTERNAL_URL ?? process.env.NEXT_PUBLIC_API_URL;
 
@@ -67,7 +68,7 @@ export default async function TaskDetailPage({
                       <span style={{ fontSize: 13, color: "#fff", fontWeight: 600, letterSpacing: 1 }}>{run.workerName}</span>
                     </div>
                     <div style={{ fontSize: 11, color: "var(--text2)", textAlign: "right" }}>
-                      TRACED: {new Date(run.startedAt).toLocaleString()}
+                      TRACED: {formatDateTimeCDMX(run.startedAt)}
                       {run.durationMs && <div>TIME: {(run.durationMs / 1000).toFixed(1)}s</div>}
                     </div>
                   </div>

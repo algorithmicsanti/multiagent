@@ -112,10 +112,28 @@ Se agregaron controles y comportamiento nuevos para operación diaria:
 2. En logs de API, requests desde dashboard (`GET /api/v1/missions`, etc.).
 3. En logs de orchestrator, polling/dispatch de trabajo.
 4. En logs de workers, consumo de cola y ejecución (`Job received/completed`).
+5. Si una tarea especializada no tiene worker dedicado, debe verse reruteada a `PROMPTOPS` en lugar de quedarse estancada en `ENQUEUED`.
+
+#### Worker de eficiencia y optimización
+
+Ahora existe un worker adicional:
+
+- `worker-promptops`
+
+Responsabilidad:
+- optimizar uso de cómputo, secuencia de pasos y reutilización de agentes
+- preservar pasos necesarios, no eliminarlos
+- absorber temporalmente tareas especializadas cuando no exista aún un worker dedicado (`BACKEND`, `FRONTEND`, `DEVOPS`, etc.)
+- proponer estrategia de ejecución efectiva con menor desperdicio de recursos
+
+Comando local/manual:
+```bash
+pnpm worker:promptops
+```
 
 Comando recomendado para monitoreo en vivo:
 ```bash
-docker compose -f infra/compose/docker-compose.dev.yml logs -f api orchestrator worker-research dashboard
+docker compose -f infra/compose/docker-compose.dev.yml logs -f api orchestrator worker-research worker-promptops dashboard
 ```
 
 Si accedes remoto por SSH, usar túnel:
@@ -160,7 +178,7 @@ curl -s http://localhost:3001/api/v1/health
 ./infra/scripts/check-services.sh
 ./infra/scripts/check-logs.sh 120
 
-# 8) Monitoreo en vivo (api + orchestrator + worker + dashboard)
+# 8) Monitoreo en vivo (api + orchestrator + workers + dashboard)
 pnpm infra:logs
 ```
 
@@ -169,12 +187,14 @@ Validación funcional obligatoria (sin mock):
 2. Crear una misión nueva desde el dashboard.
 3. Confirmar transición de estado (`NEW` -> `PLANNING` -> `DISPATCHING/RUNNING`).
 4. Confirmar en logs de worker mensajes tipo `Job received` y `Job completed`.
+5. Si el planner pidió un agente sin worker dedicado, confirmar que la tarea aparece ejecutada por `PROMPTOPS` y no queda atascada solo en `ENQUEUED`.
 
 Si algo falla, OpenClaw debe ejecutar este diagnóstico mínimo:
 ```bash
 ./infra/scripts/check-services.sh
 ./infra/scripts/check-logs.sh 200
 docker compose -f infra/compose/docker-compose.dev.yml logs --tail=200 api orchestrator worker-research
+docker compose -f infra/compose/docker-compose.dev.yml logs --tail=200 worker-promptops
 ```
 
 Regla operativa:
