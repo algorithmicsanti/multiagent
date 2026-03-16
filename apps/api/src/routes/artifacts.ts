@@ -1,6 +1,11 @@
 import type { FastifyInstance } from "fastify";
 import { prisma } from "@wm/db";
 import fs from "fs/promises";
+import path from "node:path";
+
+function isHttpLike(value: string): boolean {
+  return /^https?:\/\//i.test(value);
+}
 
 export async function artifactsRoutes(server: FastifyInstance) {
   server.get<{ Params: { id: string } }>("/artifacts/:id/content", async (req, reply) => {
@@ -12,13 +17,41 @@ export async function artifactsRoutes(server: FastifyInstance) {
       return reply.status(404).send({ error: "Artifact not found" });
     }
 
-    try {
-      // In a real production scenario you might read from S3/blob, here we assume a local filesystem
-      const content = await fs.readFile(artifact.pathOrUrl, "utf-8");
-      return reply.send({ content });
-    } catch (e) {
-      server.log.error(e, `Failed to read artifact file at ${artifact.pathOrUrl}`);
-      return reply.status(500).send({ error: "File not accessible" });
+    if (!isHttpLike(artifact.pathOrUrl)) {
+      const candidates = path.isAbsolute(artifact.pathOrUrl)
+        ? [artifact.pathOrUrl]
+        : [
+            artifact.pathOrUrl,
+            path.join("/app", artifact.pathOrUrl),
+            path.join("/app", "artifacts", artifact.pathOrUrl),
+            path.join("/artifacts", artifact.pathOrUrl),
+          ];
+
+      for (const candidate of candidates) {
+        try {
+          const content = await fs.readFile(candidate, "utf-8");
+          return reply.send({ content, source: "file", path: candidate });
+        } catch {
+          // try next path
+        }
+      }
     }
+
+    const latestRun = artifact.taskId
+      ? await prisma.taskRun.findFirst({
+          where: { taskId: artifact.taskId },
+          orderBy: { startedAt: "desc" },
+          select: { outputPayload: true },
+        })
+      : null;
+
+    if (latestRun?.outputPayload) {
+      const content = typeof latestRun.outputPayload === "string"
+        ? latestRun.outputPayload
+        : JSON.stringify(latestRun.outputPayload, null, 2);
+      return reply.send({ content, source: "taskRun", path: artifact.pathOrUrl });
+    }
+
+    return reply.status(404).send({ error: "Artifact content not available" });
   });
 }

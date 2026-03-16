@@ -28,21 +28,11 @@ async function sendTelegramNotification(text: string): Promise<void> {
   }
 }
 
-export async function notifyTaskCompleted(opts: {
+export async function notifyTaskCompleted(_opts: {
   missionId: string;
   taskId: string;
   taskTitle: string;
   summary?: string;
 }): Promise<void> {
-  const text = [
-    "✅ Tarea finalizada",
-    `Misión: ${opts.missionId}`,
-    `Task: ${opts.taskId}`,
-    `Título: ${opts.taskTitle}`,
-    opts.summary ? `Resumen: ${opts.summary}` : undefined,
-  ]
-    .filter(Boolean)
-    .join("\n");
-
-  await sendTelegramNotification(text);
+  // disabled by request: no intermediate Telegram notifications
 }

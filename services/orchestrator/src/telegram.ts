@@ -36,45 +36,28 @@ export async function notifyMissionStatus(opts: {
   status: string;
   reason?: string;
 }): Promise<void> {
+  // Requisito operativo: notificar SOLO al finalizar correctamente.
+  if (opts.status !== "DONE") return;
+
   const titlePart = opts.title ? ` (${opts.title})` : "";
-  const reasonPart = opts.reason ? `\nReason: ${opts.reason}` : "";
-  const text = `🤖 Mission ${opts.status}: ${opts.missionId}${titlePart}${reasonPart}`;
+  const text = `✅ Mission DONE: ${opts.missionId}${titlePart}`;
   await sendTelegramNotification(text);
 }
 
-export async function notifyTaskCompleted(opts: {
+export async function notifyTaskCompleted(_opts: {
   missionId: string;
   taskId: string;
   taskTitle: string;
   summary?: string;
 }): Promise<void> {
-  const text = [
-    "✅ Tarea finalizada",
-    `Misión: ${opts.missionId}`,
-    `Task: ${opts.taskId}`,
-    `Título: ${opts.taskTitle}`,
-    opts.summary ? `Resumen: ${opts.summary}` : undefined,
-  ]
-    .filter(Boolean)
-    .join("\n");
-
-  await sendTelegramNotification(text);
+  // disabled by request: no intermediate Telegram notifications
 }
 
-export async function notifyApprovalRequired(opts: {
+export async function notifyApprovalRequired(_opts: {
   missionId: string;
   taskId: string;
   taskTitle: string;
   agentType: string;
 }): Promise<void> {
-  const text = [
-    "🛑 Human-in-the-loop requerido",
-    `Misión: ${opts.missionId}`,
-    `Task: ${opts.taskId}`,
-    `Agente: ${opts.agentType}`,
-    `Título: ${opts.taskTitle}`,
-    "Acción: Revisar en Dashboard > Approvals y aprobar/rechazar.",
-  ].join("\n");
-
-  await sendTelegramNotification(text);
+  // disabled by request: no intermediate Telegram notifications
 }
