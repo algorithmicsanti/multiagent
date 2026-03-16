@@ -21,3 +21,4 @@ export async function artifactsRoutes(server: FastifyInstance) {
       return reply.status(500).send({ error: "File not accessible" });
     }
   });
+}
