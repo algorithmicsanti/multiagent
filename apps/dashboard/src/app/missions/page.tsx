@@ -50,12 +50,17 @@ function getFlowProgress(status: string) {
 export default async function MissionsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ sort?: string }>;
 }) {
   const params = await searchParams;
-  const { data: missions } = await getMissions(params.status);
+  const { data: missions } = await getMissions();
 
-  const statuses = ["NEW", "PLANNING", "DISPATCHING", "RUNNING", "REVIEWING", "DONE", "FAILED"];
+  const isAscending = params.sort === "asc";
+  const sortedMissions = [...(missions as Mission[])].sort((a, b) => {
+    const timeA = new Date(a.createdAt).getTime();
+    const timeB = new Date(b.createdAt).getTime();
+    return isAscending ? timeA - timeB : timeB - timeA;
+  });
 
   return (
     <div className="main-content">
@@ -70,26 +75,22 @@ export default async function MissionsPage({
       </div>
 
       <div className="filters">
-        <Link href="/missions" className={`filter-btn ${!params.status ? "active" : ""}`}>ALL MISSIONS</Link>
-        {statuses.map((s) => (
-          <Link
-            key={s}
-            href={`/missions?status=${s}`}
-            className={`filter-btn ${params.status === s ? "active" : ""}`}
-          >
-            {s.replace('_', ' ')}
-          </Link>
-        ))}
+        <Link 
+          href={`/missions?sort=${isAscending ? "desc" : "asc"}`} 
+          className="filter-btn active"
+        >
+          DATE {isAscending ? "↑" : "↓"}
+        </Link>
       </div>
 
       <div className="diagram-canvas">
-        {missions.length === 0 ? (
+        {sortedMissions.length === 0 ? (
           <div className="empty-state">
             <p>No active missions found in the system.</p>
           </div>
         ) : (
           <div className="missions-flow">
-            {(missions as Mission[]).map((m) => {
+            {sortedMissions.map((m) => {
               const badgeClass = `badge-${m.status.toLowerCase()}`;
               const flow = getFlowProgress(m.status);
               

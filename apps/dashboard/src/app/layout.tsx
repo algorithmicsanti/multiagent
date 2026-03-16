@@ -13,7 +13,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <nav className="navbar">
           <a href="/missions" className="navbar-brand" style={{ textDecoration: "none", color: "inherit" }}>
-            <span className="brand-icon">⬢</span> WM_AGENT_OS
+            <span className="brand-icon">⬢</span> Web Mentor Agents
           </a>
           <div className="navbar-links">
           </div>
