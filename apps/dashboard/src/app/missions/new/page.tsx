@@ -59,11 +59,6 @@ export default function NewMissionPage() {
         <h1 className="page-title">Deploy New Mission</h1>
       </div>
 
-      <div className="agent-status-banner">
-        <div className="pulse"></div>
-        <span><strong>Orchestrator:</strong> Awaiting parameters to initialize a new multi-agent sequence...</span>
-      </div>
-
       <div className="isometric-card">
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
           {error && (

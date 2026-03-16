@@ -36,10 +36,6 @@ export default async function TaskDetailPage({
         </div>
       </div>
 
-      <div className="agent-status-banner" style={{ background: "rgba(0, 0, 0, 0.4)", borderLeftColor: "var(--text2)", color: "var(--text2)" }}>
-        <span><strong>Trace Explorer:</strong> Examining execution instances for task <span style={{ color: "var(--accent)" }}>{taskId}</span></span>
-      </div>
-
       <div className="diagram-canvas">
         {runs.length === 0 ? (
           <div className="empty-state">

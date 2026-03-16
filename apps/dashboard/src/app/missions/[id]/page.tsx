@@ -119,11 +119,6 @@ export default async function MissionDetailPage({ params }: { params: Promise<{ 
         </div>
       )}
 
-      <div className="agent-status-banner">
-        <div className="pulse"></div>
-        <span><strong>SysInfo:</strong> Detailed telemetry for Node ID [{mission.id}]</span>
-      </div>
-
       {isCompleted && (
         <h3 className="page-title" style={{ fontSize: "14px", marginTop: "0", marginBottom: "20px" }}>
           TECHNICAL DETAILS

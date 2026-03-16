@@ -21,9 +21,14 @@ interface Mission {
 async function getMissions(status?: string) {
   const url = new URL(`${API_URL}/api/v1/missions`);
   if (status) url.searchParams.set("status", status);
-  const res = await fetch(url.toString(), { cache: "no-store" });
-  if (!res.ok) return { data: [], pagination: { total: 0 } };
-  return res.json();
+  try {
+    const res = await fetch(url.toString(), { cache: "no-store" });
+    if (!res.ok) return { data: [], pagination: { total: 0 } };
+    return res.json();
+  } catch (e) {
+    console.error("Fail fetching API:", e);
+    return { data: [], pagination: { total: 0 } };
+  }
 }
 
 const FLOW_STEPS = ["NEW", "PLANNING", "DISPATCHING", "RUNNING", "REVIEWING", "DONE"];
@@ -65,11 +70,6 @@ export default async function MissionsPage({
             NEW MISSION
           </Link>
         </div>
-      </div>
-
-      <div className="agent-status-banner">
-        <div className="pulse"></div>
-        <span><strong>Web Mentor OS:</strong> Scanning network for active assignments and tasks...</span>
       </div>
 
       <div className="filters">
