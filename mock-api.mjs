@@ -100,7 +100,7 @@ function simulateMissionLifecycle(mission) {
       agentType: "AUTOMATION",
       title: `Build execution plan for: ${mission.title}`,
       instructions: "Generate implementation steps and validations.",
-      requiresApproval: true,
+      requiresApproval: false,
       dependsOn: [researchTask.id],
     });
 
@@ -140,27 +140,47 @@ function simulateMissionLifecycle(mission) {
         taskId: researchTask.id,
       });
 
-      mission.status = "WAITING_APPROVAL";
-      implementationTask.status = "WAITING_APPROVAL";
+      // Skip approval and move directly to execution
+      mission.status = "RUNNING";
+      implementationTask.status = "RUNNING";
       implementationTask.updatedAt = nowIso();
-      const approval = {
-        id: randomId("approval"),
-        missionId: mission.id,
-        taskId: implementationTask.id,
-        title: `Approve execution: ${implementationTask.title}`,
-        reason: "Plan affects automated execution path.",
-        status: "PENDING",
-        createdAt: nowIso(),
-        notes: null,
-        resolvedAt: null,
-      };
-      APPROVALS.push(approval);
-      mission.approvals.push(approval.id);
-      mission.updatedAt = nowIso();
-      pushEvent(mission.id, "APPROVAL_REQUIRED", {
-        approvalId: approval.id,
-        taskId: implementationTask.id,
+      upsertRun(implementationTask.id, {
+        status: "RUNNING",
+        workerName: "worker-orchestrator",
+        startedAt: nowIso(),
+        tokensUsed: 980,
       });
+
+      setTimeout(() => {
+        implementationTask.status = "DONE";
+        implementationTask.updatedAt = nowIso();
+        upsertRun(implementationTask.id, {
+          status: "DONE",
+          finishedAt: nowIso(),
+          durationMs: 4100,
+          costUsd: "0.0108",
+          outputPayload: {
+            summary: "Execution plan produced and validated.",
+            checklist: [
+              "Scope confirmed",
+              "Dependencies mapped",
+              "Risk mitigations attached",
+            ],
+          },
+        });
+        mission.status = "DONE";
+        mission.updatedAt = nowIso();
+        mission.artifacts.push({
+          id: randomId("artifact"),
+          artifactType: "REPORT",
+          pathOrUrl: `/artifacts/${mission.id}/execution-plan.md`,
+          createdAt: nowIso(),
+        });
+        pushEvent(mission.id, "MISSION_COMPLETED", {
+          missionId: mission.id,
+        });
+      }, 2500);
+
     }, 2200);
   }, 1200);
 }
@@ -384,6 +404,24 @@ const server = createServer((req, res) => {
       approval.resolvedAt = nowIso();
       continueAfterApproval(approval, approved, notes || null);
       return json(res, approval);
+    }
+
+    // GET /artifacts/:id/content
+    const artifactContentMatch = path.match(/^\/api\/v1\/artifacts\/([^/]+)\/content$/);
+    if (method === "GET" && artifactContentMatch) {
+      const artifactId = artifactContentMatch[1];
+      const allArtifacts = Object.values(MISSIONS).flatMap(m => m.artifacts || []);
+      const artifact = allArtifacts.find(a => a.id === artifactId);
+      
+      if (!artifact) return json(res, { error: "Artifact not found" }, 404);
+      
+      // Simulamos la lectura del archivo devolviendo un contenido estático
+      // ya que en el mock no tenemos un sistema de archivos real
+      res.writeHead(200, {
+        "Content-Type": "text/plain",
+      });
+      res.end(`// Contect mock for artifact ${artifactId}\nconsole.log("Hello from mock artifact ${artifactId}");`);
+      return;
     }
 
     // SSE /events

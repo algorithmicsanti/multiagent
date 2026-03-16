@@ -173,6 +173,40 @@ importers:
         specifier: ^5.7.2
         version: 5.9.3
 
+  services/worker-promptops:
+    dependencies:
+      '@anthropic-ai/sdk':
+        specifier: ^0.37.0
+        version: 0.37.0
+      '@wm/agent-core':
+        specifier: workspace:*
+        version: link:../../packages/agent-core
+      '@wm/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      '@wm/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
+      bullmq:
+        specifier: ^5.30.1
+        version: 5.71.0
+      ioredis:
+        specifier: ^5.4.2
+        version: 5.10.0
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.2
+        version: 22.19.15
+      tsup:
+        specifier: ^8.3.5
+        version: 8.5.1(jiti@2.6.1)(postcss@8.4.31)(tsx@4.21.0)(typescript@5.9.3)
+      tsx:
+        specifier: ^4.19.2
+        version: 4.21.0
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+
   services/worker-research:
     dependencies:
       '@anthropic-ai/sdk':

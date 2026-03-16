@@ -6,7 +6,6 @@ import { Redis } from "ioredis";
 import { missionsRoutes } from "./routes/missions.js";
 import { tasksRoutes } from "./routes/tasks.js";
 import { eventsRoutes } from "./routes/events.js";
-import { approvalsRoutes } from "./routes/approvals.js";
 import { artifactsRoutes } from "./routes/artifacts.js";
 import { healthRoutes } from "./routes/health.js";
 
@@ -30,7 +29,6 @@ await server.register(healthRoutes, { prefix: "/api/v1" });
 await server.register(missionsRoutes, { prefix: "/api/v1" });
 await server.register(tasksRoutes, { prefix: "/api/v1" });
 await server.register(eventsRoutes, { prefix: "/api/v1" });
-await server.register(approvalsRoutes, { prefix: "/api/v1" });
 await server.register(artifactsRoutes, { prefix: "/api/v1" });
 
 // Graceful shutdown

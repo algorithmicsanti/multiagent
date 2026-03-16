@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { formatDateTimeCDMX } from "../../../../lib/datetime";
 
-const API_URL = process.env.API_INTERNAL_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+const API_URL = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 async function getTaskRuns(taskId: string) {
   const res = await fetch(`${API_URL}/api/v1/tasks/${taskId}/runs`, { cache: "no-store" });
@@ -30,10 +30,6 @@ export default async function TaskDetailPage({
           </div>
           <h1 className="page-title">Agent Trace Logs</h1>
         </div>
-      </div>
-
-      <div className="agent-status-banner" style={{ background: "rgba(0, 0, 0, 0.4)", borderLeftColor: "var(--text2)", color: "var(--text2)" }}>
-        <span><strong>Trace Explorer:</strong> Examining execution instances for task <span style={{ color: "var(--accent)" }}>{taskId}</span></span>
       </div>
 
       <div className="diagram-canvas">
