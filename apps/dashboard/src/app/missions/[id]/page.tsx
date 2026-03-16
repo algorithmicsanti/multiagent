@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import MissionLiveLog from "./MissionLiveLog";
 import { formatDateTimeCDMX, formatTimeCDMX } from "../../lib/datetime";
 
 const API_URL = process.env.API_INTERNAL_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
@@ -114,6 +115,8 @@ export default async function MissionDetailPage({ params }: { params: Promise<{ 
           )}
         </div>
       )}
+
+      <MissionLiveLog missionId={mission.id} />
 
       <div className="agent-status-banner">
         <div className="pulse"></div>
