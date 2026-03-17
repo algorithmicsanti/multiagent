@@ -34,6 +34,23 @@ Return ONLY valid JSON in this shape:
   "rawPlan": "string"
 }`;
 
+const PROMPTOPS_REPORT_SYSTEM_PROMPT = `You are a report synthesis agent.
+You must produce the final business deliverable requested by the task instructions.
+Do NOT describe process, strategy, optimization steps, or worker orchestration.
+Do NOT output JSON unless explicitly asked.
+Return ONLY the final Markdown report for humans.`;
+
+function isHumanReportTask(instructions: string): boolean {
+  const i = instructions.toLowerCase();
+  return (
+    i.includes("top 5 automatizaciones") ||
+    i.includes("formato de entrega") ||
+    i.includes("tabla comparativa") ||
+    i.includes("resumen ejecutivo") ||
+    i.includes("recomendación de arranque")
+  );
+}
+
 function toStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value.map((v) => String(v)).filter(Boolean);
@@ -101,10 +118,12 @@ export async function processPromptOpsJob(payload: AgentJobPayload): Promise<Wor
   const startTime = Date.now();
 
   try {
+    const reportMode = isHumanReportTask(instructions);
+
     const userMessage = `Mission: ${context.missionTitle}
 Description: ${context.missionDescription}
 
-Optimization task instructions:
+Task instructions:
 ${instructions}
 
 Previous artifacts:
@@ -113,12 +132,12 @@ ${context.previousArtifacts.map((a: { artifactType: string; pathOrUrl: string })
 Completed tasks:
 ${context.completedTaskSummaries.map((t: { title: string; summary: string }) => `- ${t.title}: ${t.summary}`).join("\n") || "None"}
 
-Produce an execution optimization strategy now.`;
+${reportMode ? "Produce the final human-facing Markdown report now." : "Produce an execution optimization strategy now."}`;
 
     const message = await client.messages.create({
       model: "claude-sonnet-4-6",
       max_tokens: 8096,
-      system: PROMPTOPS_SYSTEM_PROMPT,
+      system: reportMode ? PROMPTOPS_REPORT_SYSTEM_PROMPT : PROMPTOPS_SYSTEM_PROMPT,
       messages: [{ role: "user", content: userMessage }],
     });
 
@@ -128,25 +147,33 @@ Produce an execution optimization strategy now.`;
     }
 
     const text = content.text;
-    const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/) ?? [null, text];
-    const jsonText = jsonMatch[1]?.trim() ?? text.trim();
 
     let output: Record<string, unknown>;
-    try {
-      output = JSON.parse(jsonText) as Record<string, unknown>;
-    } catch {
+    if (reportMode) {
+      const markdown = text.trim();
       output = {
-        summary: "PromptOps optimization completed (unstructured)",
-        executionStrategy: text,
-        preservedNecessarySteps: [],
-        optimizations: [],
-        nextSteps: [],
-        rawPlan: text,
+        summary: "Reporte human-first generado",
+        markdown,
       };
-    }
+    } else {
+      const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/) ?? [null, text];
+      const jsonText = jsonMatch[1]?.trim() ?? text.trim();
+      try {
+        output = JSON.parse(jsonText) as Record<string, unknown>;
+      } catch {
+        output = {
+          summary: "PromptOps optimization completed (unstructured)",
+          executionStrategy: text,
+          preservedNecessarySteps: [],
+          optimizations: [],
+          nextSteps: [],
+          rawPlan: text,
+        };
+      }
 
-    const markdownReport = buildHumanMarkdown(output);
-    output.markdown = markdownReport;
+      const markdownReport = buildHumanMarkdown(output);
+      output.markdown = markdownReport;
+    }
 
     const durationMs = Date.now() - startTime;
     const tokensUsed = message.usage.input_tokens + message.usage.output_tokens;
