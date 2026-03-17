@@ -46,6 +46,14 @@ export async function artifactsRoutes(server: FastifyInstance) {
       : null;
 
     if (latestRun?.outputPayload) {
+      if (typeof latestRun.outputPayload === "object" && latestRun.outputPayload !== null) {
+        const payload = latestRun.outputPayload as Record<string, unknown>;
+        const markdown = payload.markdown;
+        if (typeof markdown === "string" && markdown.trim().length > 0) {
+          return reply.send({ content: markdown, source: "taskRun.markdown", path: artifact.pathOrUrl });
+        }
+      }
+
       const content = typeof latestRun.outputPayload === "string"
         ? latestRun.outputPayload
         : JSON.stringify(latestRun.outputPayload, null, 2);

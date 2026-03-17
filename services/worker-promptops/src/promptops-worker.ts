@@ -34,6 +34,50 @@ Return ONLY valid JSON in this shape:
   "rawPlan": "string"
 }`;
 
+function toStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((v) => String(v)).filter(Boolean);
+}
+
+function buildHumanMarkdown(output: Record<string, unknown>): string {
+  const summary = typeof output.summary === "string" ? output.summary : "Sin resumen";
+  const strategy = typeof output.executionStrategy === "string" ? output.executionStrategy : "Sin estrategia detallada";
+  const nextSteps = toStringArray(output.nextSteps);
+
+  const optimizations = Array.isArray(output.optimizations)
+    ? output.optimizations
+        .map((item, idx) => {
+          if (!item || typeof item !== "object") return `${idx + 1}. Optimización ${idx + 1}`;
+          const row = item as Record<string, unknown>;
+          const area = String(row.area ?? `Área ${idx + 1}`);
+          const change = String(row.change ?? "cambio no especificado");
+          const benefit = String(row.benefit ?? "beneficio no especificado");
+          return `${idx + 1}. **${area}** — ${change} (beneficio: ${benefit})`;
+        })
+        .filter(Boolean)
+    : [];
+
+  return [
+    "## Resumen ejecutivo",
+    summary,
+    "",
+    "## Estrategia recomendada",
+    strategy,
+    "",
+    "## Optimizaciones clave",
+    ...(optimizations.length ? optimizations : ["1. Sin optimizaciones explícitas reportadas"]),
+    "",
+    "## Siguientes pasos",
+    ...(nextSteps.length ? nextSteps.map((s, i) => `${i + 1}. ${s}`) : ["1. Ejecutar siguiente fase operativa"]),
+    "",
+    "---",
+    "### Detalles técnicos (JSON)",
+    "```json",
+    JSON.stringify(output, null, 2),
+    "```",
+  ].join("\n");
+}
+
 export async function processPromptOpsJob(payload: AgentJobPayload): Promise<WorkerResult> {
   const { taskId, missionId, runId, instructions, context } = payload;
 
@@ -101,6 +145,9 @@ Produce an execution optimization strategy now.`;
       };
     }
 
+    const markdownReport = buildHumanMarkdown(output);
+    output.markdown = markdownReport;
+
     const durationMs = Date.now() - startTime;
     const tokensUsed = message.usage.input_tokens + message.usage.output_tokens;
     const costUsd = (tokensUsed / 1_000_000) * 3.0;
@@ -131,8 +178,8 @@ Produce an execution optimization strategy now.`;
         missionId,
         taskId,
         artifactType: ArtifactType.DOCUMENT,
-        pathOrUrl: `promptops/${taskId}.json`,
-        metadata: { summary, tokensUsed, durationMs },
+        pathOrUrl: `promptops/${taskId}.md`,
+        metadata: { summary, tokensUsed, durationMs, format: "markdown" },
       },
     });
 
@@ -157,8 +204,8 @@ Produce an execution optimization strategy now.`;
       artifacts: [
         {
           artifactType: ArtifactType.DOCUMENT,
-          pathOrUrl: `promptops/${taskId}.json`,
-          metadata: { summary },
+          pathOrUrl: `promptops/${taskId}.md`,
+          metadata: { summary, format: "markdown" },
         },
       ],
       tokensUsed,
