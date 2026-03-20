@@ -8,6 +8,57 @@ const log = createChildLogger({ service: "orchestrator", module: "telegram" });
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 
+let lastUpdateId = 0;
+
+export async function pollTelegramUpdates(): Promise<void> {
+  if (!BOT_TOKEN || !CHAT_ID) return;
+
+  try {
+    const res = await fetch(
+      `https://api.telegram.org/bot${BOT_TOKEN}/getUpdates?offset=${lastUpdateId + 1}&timeout=30`,
+      { method: "GET" }
+    );
+
+    if (!res.ok) return;
+    const body: any = await res.json();
+    if (!body.ok || !body.result || body.result.length === 0) return;
+
+    for (const update of body.result) {
+      if (update.update_id > lastUpdateId) {
+        lastUpdateId = update.update_id;
+      }
+
+      const msg = update.message;
+      if (!msg || !msg.text) continue;
+      
+      // Solo aceptamos mensajes del CHAT_ID configurado (por seguridad)
+      if (String(msg.chat.id) !== CHAT_ID) continue;
+
+      const text = msg.text.trim();
+      log.info({ updateId: update.update_id, text }, "Mensaje de telegram recibido");
+
+      if (text.startsWith("/mission ") || text.startsWith("/tarea ")) {
+        const description = text.replace(/^\/(mission|tarea)\s+/i, "");
+        if (description) {
+          // Crear mission
+          const mission = await prisma.mission.create({
+            data: {
+              title: "Nueva mision desde Telegram",
+              description: description,
+              status: "NEW", // O usando MissionStatus.NEW
+              priority: 50,
+            },
+          });
+          
+          await sendTelegramNotification(`Misión creada con ID: ${mission.id}`);
+        }
+      }
+    }
+  } catch (err) {
+    log.warn({ err }, "Error polleando telegram updates");
+  }
+}
+
 export async function sendTelegramNotification(text: string): Promise<void> {
   if (!BOT_TOKEN || !CHAT_ID) {
     return;

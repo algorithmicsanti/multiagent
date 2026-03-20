@@ -5,7 +5,7 @@ import { logEvent, EVENT_TYPES, createChildLogger } from "@wm/observability";
 import { generateMissionPlan } from "./planner.js";
 import { createQueues, dispatchReadyTasks } from "./dispatcher.js";
 import { checkMissionCompletion } from "./state-machine.js";
-import { notifyMissionStatus } from "./telegram.js";
+import { notifyMissionStatus, pollTelegramUpdates } from "./telegram.js";
 
 const log = createChildLogger({ service: "orchestrator" });
 const POLL_INTERVAL_MS = Number(process.env.ORCHESTRATOR_POLL_INTERVAL_MS ?? 10_000);
@@ -177,7 +177,7 @@ async function run(): Promise<void> {
   log.info({ pollIntervalMs: POLL_INTERVAL_MS }, "Orchestrator started");
 
   const loop = async () => {
-    await tick();
+    await Promise.all([tick(), pollTelegramUpdates()]);
     setTimeout(loop, POLL_INTERVAL_MS);
   };
 

@@ -2309,15 +2309,26 @@ docker compose -f infra/compose/docker-compose.dev.yml logs --since=3m --tail=12
 
 #### Cambios realizados hoy
 1. **Refactorización de UI**: Se eliminó toda la lógica, rutas y dependencias relacionadas con *Approvals* (aprobaciones humanas) para simplificar el flujo hacia un sistema puramente automatizado. Modificamos colores de formularios para respetar los temas visuales.
-2. **Mobile Responsiveness**: Se agregaron reglas responsivas en \globals.css\ para que el dashboard sea navegable en celulares.
-3. **Estabilización del build en Next.js**: Se corrigieron errores 500 y caídas en tiempo de build provocadas por la ausencia de estática de \API_URL\. Ahora todas las rutas inyectan los fallbacks resilientes. Se eliminó la caché problemática de Next.
+2. **Mobile Responsiveness**: Se agregaron reglas responsivas en `globals.css` para que el dashboard sea navegable en celulares.
+3. **Estabilización del build en Next.js**: Se corrigieron errores 500 y caídas en tiempo de build provocadas por la ausencia de estática de `API_URL`. Ahora todas las rutas inyectan los fallbacks resilientes. Se eliminó la caché problemática de Next.
 4. **Limpieza de filtros**: Se retiró el filtrado manual por fechas y su paso por URL querystrings, el cual causaba cuelgues. Las misiones ahora se ordenan de más recientes a antiguas de manera automática en el mapeo inicial.
 
 #### Instrucciones para OpenClaw (Siguientes Pasos)
 
 Hola **OpenClaw**, soy tu colega Copilot. Hemos dejado el entorno de UI local limpio y estable. Tus siguientes tareas operativas (como Operador Técnico Residente) son:
-
-1. **Despliegue a Staging / Prod:** Aplica estos cambios usando el pipeline (ej. \pnpm deploy:frontend\ o los scripts en \./infra/scripts/\).
-2. **Revisión de Salud:** Valida que \pnpm --filter dashboard build\ levante de modo sano en la VPS (puedes requerir borrar el directorio \.next\ si hubo builds corruptos anteriores).
-3. **Monitoreo Cero Errores:** Al reiniciar los servicios, vigila los logs (\docker compose logs -f dashboard\). No deben registrarse colapsos estáticos ni "Missing API URL".
+1. **Despliegue a Staging / Prod:** Aplica estos cambios usando el pipeline (ej. `pnpm deploy:frontend` o los scripts en `./infra/scripts/`).
+2. **Revisión de Salud:** Valida que `pnpm --filter dashboard build` levante de modo sano en la VPS (puedes requerir borrar el directorio `.next` si hubo builds corruptos anteriores).
+3. **Monitoreo Cero Errores:** Al reiniciar los servicios, vigila los logs (`docker compose logs -f dashboard`). No deben registrarse colapsos estáticos ni "Missing API URL".
 4. **Resumir Hallazgos**: Ejerce tus principios para reportar si los contenedores se estabilizaron exitosamente con los cambios UI de hoy.
+
+
+### Inbound Telegram Bot -> System Orchestrator (2026-03-19)
+
+#### Cambios de Ingesta desde Telegram
+Se ha implementado un polling cycle hacia la API de Telegram (`getUpdates`) directamente en el loop principal del orchestrator (`tick()`). Ahora el sistema puede recibir mensajes. Si el mensaje proviene del `TELEGRAM_CHAT_ID` configurado y comienza con `/tarea <descripción>` o `/mission <descripción>`, se crea automáticamente una nueva misión en la base de datos (con estado `NEW` y prioridad `50`). El sistema la recogerá y comenzará a planificarla al instante para inyectarla en el dashboard.
+
+#### Instrucciones para OpenClaw
+Hola **OpenClaw**. Hemos habilitado la ingesta de inputs desde Telegram:
+1. **Verificación de Entorno:** Confirma que las variables `TELEGRAM_BOT_TOKEN` y `TELEGRAM_CHAT_ID` siguen configuradas correctamente en los secrets de producción/staging para que el orchestrator esté autorizado a leer los updates del bot.
+2. **Despliegue y Reinicio:** Ejecuta `./infra/scripts/restart-workers.sh` (o el pipeline respectivo) para reiniciar el `services/orchestrator` y que asuma el nuevo código de repetición `Promise.all([tick(), pollTelegramUpdates()])`.
+3. **Validar Funcionamiento:** Escribe un mensaje de prueba a tu bot de Telegram como: `/tarea Revisar logs del sistema`. Revisa el log de orchestrator (`docker compose logs -f orchestrator`) o el propio dashboard para verificar la recepción del payload y su auto-planificación.
