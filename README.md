@@ -29,7 +29,7 @@ Base funcional en `main` + hardening operativo reciente para poder levantar y ma
 ### Avance funcional 2026-04-04 (actores, tareas humanas y mÃ³vil)
 
 - Se introdujo un **registro formal de actores**:
-  - humanos iniciales: `Nicholas`, `Kevin`, `Santiago`, `German`
+  - humanos iniciales: `Nicholas`, `Kevin`, `Santiago`, `Germán`
   - agentes visibles/asignables: `Research Agent`, `PromptOps Agent`, `Frontend Specialist Agent`, `Backend Specialist Agent`, `DevOps Specialist Agent`
   - actor especial: `Central Orchestrator`
 - Cada actor ahora tiene:
@@ -147,7 +147,7 @@ Se agregaron controles y comportamiento nuevos para operaciÃ³n diaria:
 4. CreaciÃ³n de tareas dentro de la misiÃ³n:
    - Ruta nueva: `/missions/:id/tasks/new`
    - Permite escoger:
-     - un humano (`Nicholas`, `Kevin`, `Santiago`, `German`)
+     - un humano (`Nicholas`, `Kevin`, `Santiago`, `Germán`)
      - un agente
      - `Central Orchestrator` para delegaciÃ³n inteligente
 5. Cierre manual de tareas humanas:

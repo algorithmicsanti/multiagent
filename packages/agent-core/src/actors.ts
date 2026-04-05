@@ -103,11 +103,11 @@ export const DEFAULT_ACTORS: ActorProfile[] = [
   {
     id: "human-german",
     key: "german",
-    displayName: "German",
+    displayName: "Germán",
     kind: ActorKind.HUMAN,
     role: "Product lead de vision, UX y direccion transversal",
     context:
-      "Perfil inicial por defecto. German aporta criterio de producto, prioridades, UX, experiencia final y alineacion entre negocio, frontend y coordinacion general.",
+      "Perfil inicial por defecto. Germán aporta criterio de producto, prioridades, UX, experiencia final y alineacion entre negocio, frontend y coordinacion general.",
     supportedAgentTypes: [AgentType.FRONTEND, AgentType.RESEARCH, AgentType.PROMPTOPS],
     runtimeAgentType: null,
     canBeAssignedDirectly: true,

@@ -41,7 +41,7 @@ export default function NewMissionPage() {
       }
 
       const mission = await res.json();
-      router.push(`/missions`);
+      router.push(`/missions/${mission.id}/tasks/new`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
@@ -52,7 +52,12 @@ export default function NewMissionPage() {
   return (
     <div className="main-content" style={{ maxWidth: 800 }}>
       <div className="page-header">
-        <h1 className="page-title">Deploy New Mission</h1>
+        <div>
+          <h1 className="page-title">Deploy New Mission</h1>
+          <p className="data-label" style={{ marginTop: 10 }}>
+            After creating the mission, you will land on the task assignment screen to choose a human, an agent, or the Central Orchestrator.
+          </p>
+        </div>
       </div>
 
       <div className="isometric-card">
@@ -124,7 +129,7 @@ export default function NewMissionPage() {
 
           <div style={{ display: "flex", gap: 16, marginTop: 20, paddingTop: 20, borderTop: "1px dashed var(--border)" }}>
             <button type="submit" className="btn" disabled={loading} style={{ background: "rgba(0, 240, 255, 0.1)", borderColor: "var(--accent)", color: "var(--accent)" }}>
-              {loading ? "INITIALIZING SEQUENCE..." : "DEPLOY MISSION"}
+              {loading ? "INITIALIZING SEQUENCE..." : "DEPLOY MISSION & OPEN ASSIGNMENT"}
             </button>
             <Link href="/missions" className="btn" style={{ borderColor: "var(--text2)", color: "var(--text2)" }}>
               ABORT
