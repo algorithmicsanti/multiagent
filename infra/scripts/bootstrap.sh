@@ -17,7 +17,7 @@ until docker compose -f infra/compose/docker-compose.dev.yml exec postgres pg_is
   sleep 1
 done
 
-echo "==> Running migrations..."
-pnpm --filter @wm/db db:migrate
+echo "==> Running migrations (deploy mode)..."
+pnpm db:deploy
 
 echo "==> Done! Run 'pnpm infra:up' to start all services."

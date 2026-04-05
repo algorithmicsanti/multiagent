@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
 set -euo pipefail
-echo "==> Running Prisma migrations..."
-pnpm --filter @wm/db db:migrate
+echo "==> Running Prisma migrations (deploy mode)..."
+pnpm db:deploy
 echo "==> Done."

@@ -56,7 +56,6 @@ git checkout "$COMMIT"
 run_pnpm install --frozen-lockfile
 run_pnpm build
 run_pnpm typecheck
-run_pnpm db:migrate
 
 case "$TARGET" in
   full)
@@ -64,18 +63,23 @@ case "$TARGET" in
     ERROR_SERVICES="api,orchestrator,worker-research,dashboard"
     HEALTH_URL="http://localhost:3001/api/v1/health"
     SMOKE_NAME="full"
+    echo "Running migrations for rollback target=$TARGET"
+    run_pnpm db:deploy
     ;;
   backend)
     DEPLOY_SERVICES=(postgres redis api orchestrator worker-research)
     ERROR_SERVICES="api,orchestrator,worker-research"
     HEALTH_URL="http://localhost:3001/api/v1/health"
     SMOKE_NAME="backend"
+    echo "Running migrations for rollback target=$TARGET"
+    run_pnpm db:deploy
     ;;
   frontend)
     DEPLOY_SERVICES=(api dashboard)
     ERROR_SERVICES="api,dashboard"
     HEALTH_URL="http://localhost:3000"
     SMOKE_NAME="frontend"
+    echo "Skipping DB migrations for rollback target=$TARGET"
     ;;
   *)
     echo "Unknown TARGET in state file: $TARGET"

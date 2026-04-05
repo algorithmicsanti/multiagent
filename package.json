@@ -1,6 +1,7 @@
 {
   "name": "webmentor-agent-os",
   "private": true,
+  "packageManager": "pnpm@10.32.1",
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev --parallel",
@@ -9,6 +10,7 @@
     "clean": "turbo run clean",
     "db:generate": "turbo run db:generate --filter=@wm/db",
     "db:migrate": "turbo run db:migrate --filter=@wm/db",
+    "db:deploy": "pnpm --filter @wm/db db:deploy",
     "infra:up": "docker compose -f infra/compose/docker-compose.dev.yml up -d",
     "infra:down": "docker compose -f infra/compose/docker-compose.dev.yml down",
     "infra:logs": "docker compose -f infra/compose/docker-compose.dev.yml logs -f",

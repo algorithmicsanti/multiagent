@@ -16,6 +16,7 @@ export enum TaskStatus {
   PENDING = "PENDING",
   ENQUEUED = "ENQUEUED",
   RUNNING = "RUNNING",
+  WAITING_RESULT = "WAITING_RESULT",
   COMPLETED = "COMPLETED",
   FAILED = "FAILED",
   CANCELLED = "CANCELLED",
@@ -30,6 +31,17 @@ export enum AgentType {
   BACKEND = "BACKEND",
   DEVOPS = "DEVOPS",
   PROMPTOPS = "PROMPTOPS",
+}
+
+export enum ActorKind {
+  HUMAN = "HUMAN",
+  AGENT = "AGENT",
+  SYSTEM = "SYSTEM",
+}
+
+export enum TaskAssignmentMode {
+  DIRECT = "DIRECT",
+  ORCHESTRATOR = "ORCHESTRATOR",
 }
 
 export enum ApprovalStatus {

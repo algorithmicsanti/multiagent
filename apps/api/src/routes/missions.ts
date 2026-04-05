@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { prisma } from "@wm/db";
+import { Prisma, prisma, syncDefaultActors } from "@wm/db";
 import { logEvent, EVENT_TYPES } from "@wm/observability";
 import { z } from "zod";
 import { access, readFile } from "node:fs/promises";
@@ -22,6 +22,10 @@ const ListMissionsQuerySchema = z.object({
 
 function isHttpLike(value: string): boolean {
   return /^https?:\/\//i.test(value);
+}
+
+function toJson(value: unknown) {
+  return (value ?? Prisma.JsonNull) as Prisma.InputJsonValue | typeof Prisma.JsonNull;
 }
 
 async function readArtifactText(pathOrUrl: string): Promise<string | null> {
@@ -54,6 +58,8 @@ async function readArtifactText(pathOrUrl: string): Promise<string | null> {
 export async function missionsRoutes(server: FastifyInstance) {
   // POST /missions
   server.post("/missions", async (req, reply) => {
+    await syncDefaultActors(prisma);
+
     const body = CreateMissionSchema.safeParse(req.body);
     if (!body.success) {
       return reply.status(400).send({ error: "Validation error", details: body.error.flatten() });
@@ -66,7 +72,7 @@ export async function missionsRoutes(server: FastifyInstance) {
         priority: body.data.priority,
         createdBy: body.data.createdBy,
         budgetLimit: body.data.budgetLimit ?? null,
-        metadata: body.data.metadata ?? null,
+        metadata: toJson(body.data.metadata ?? Prisma.JsonNull),
       },
     });
 
@@ -137,7 +143,13 @@ export async function missionsRoutes(server: FastifyInstance) {
     const mission = await prisma.mission.findUnique({
       where: { id: req.params.id },
       include: {
-        tasks: { orderBy: { createdAt: "asc" } },
+        tasks: {
+          orderBy: { createdAt: "asc" },
+          include: {
+            requestedActor: true,
+            resolvedActor: true,
+          },
+        },
         artifacts: { orderBy: { createdAt: "desc" } },
         approvals: { where: { status: "PENDING" } },
         _count: { select: { eventLogs: true } },
@@ -190,7 +202,11 @@ export async function missionsRoutes(server: FastifyInstance) {
     const tasks = await prisma.task.findMany({
       where: { missionId: req.params.id },
       orderBy: { createdAt: "asc" },
-      include: { _count: { select: { runs: true } } },
+      include: {
+        requestedActor: true,
+        resolvedActor: true,
+        _count: { select: { runs: true } },
+      },
     });
     return reply.send(tasks);
   });
@@ -293,16 +309,26 @@ export async function missionsRoutes(server: FastifyInstance) {
         taskId: body.data.taskId ?? null,
         artifactType: body.data.artifactType as never,
         pathOrUrl: body.data.pathOrUrl,
-        metadata: body.data.metadata ?? null,
+        metadata: toJson(body.data.metadata ?? Prisma.JsonNull),
       },
     });
 
-    await logEvent(prisma, {
+    const eventPayload = {
       eventType: EVENT_TYPES.ARTIFACT_CREATED,
       missionId: req.params.id,
-      taskId: body.data.taskId,
       payload: { artifactId: artifact.id, artifactType: artifact.artifactType },
-    });
+    } as {
+      eventType: string;
+      missionId: string;
+      taskId?: string;
+      payload: Prisma.InputJsonValue;
+    };
+
+    if (body.data.taskId) {
+      eventPayload.taskId = body.data.taskId;
+    }
+
+    await logEvent(prisma, eventPayload);
 
     return reply.status(201).send(artifact);
   });

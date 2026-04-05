@@ -1,10 +1,16 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { HealthIndicators } from "./components/HealthIndicators";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Web Mentor Agent OS",
   description: "Mission orchestration dashboard",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

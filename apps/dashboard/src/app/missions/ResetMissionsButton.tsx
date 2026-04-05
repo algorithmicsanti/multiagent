@@ -2,8 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+import { resolveBrowserApiUrl } from "../lib/api-url";
 
 export function ResetMissionsButton() {
   const router = useRouter();
@@ -15,7 +14,7 @@ export function ResetMissionsButton() {
 
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/api/v1/missions`, {
+      const res = await fetch(`${resolveBrowserApiUrl()}/api/v1/missions`, {
         method: "DELETE",
       });
 

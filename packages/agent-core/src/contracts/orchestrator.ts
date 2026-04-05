@@ -7,7 +7,7 @@ export interface PlannedTask {
   dependsOn: string[];
   requiresApproval: boolean;
   timeoutSeconds: number;
-  metadata?: Record<string, unknown>;
+  metadata?: Record<string, unknown> | undefined;
 }
 
 export interface MissionPlan {

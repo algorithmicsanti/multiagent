@@ -1,6 +1,6 @@
 import { Redis } from "ioredis";
-import { prisma } from "@wm/db";
-import { MissionStatus, AgentType } from "@wm/agent-core";
+import { Prisma, prisma, syncDefaultActors } from "@wm/db";
+import { MissionStatus, AgentType, TaskAssignmentMode, getDefaultActorForAgentType } from "@wm/agent-core";
 import { logEvent, EVENT_TYPES, createChildLogger } from "@wm/observability";
 import { generateMissionPlan } from "./planner.js";
 import { createQueues, dispatchReadyTasks } from "./dispatcher.js";
@@ -15,6 +15,10 @@ const redis = new Redis(process.env.REDIS_URL ?? "redis://localhost:6379", {
 });
 
 const queues = createQueues(redis);
+
+function toJson(value: unknown) {
+  return (value ?? Prisma.JsonNull) as Prisma.InputJsonValue | typeof Prisma.JsonNull;
+}
 
 async function buildPriorMissionContext(title: string): Promise<string> {
   const similar = await prisma.mission.findMany({
@@ -97,20 +101,50 @@ async function processMission(missionId: string): Promise<void> {
       const resolvedDeps = planned.dependsOn
         .map((dep) => createdTaskIds[parseInt(dep, 10)] ?? null)
         .filter((id): id is string => id !== null);
+      const defaultActor = getDefaultActorForAgentType(planned.agentType as AgentType);
 
       const task = await prisma.task.create({
         data: {
           missionId,
           agentType: planned.agentType as AgentType,
+          assignmentMode: TaskAssignmentMode.DIRECT,
+          requestedActorId: defaultActor?.id ?? null,
+          resolvedActorId: defaultActor?.id ?? null,
           title: planned.title,
           instructions: planned.instructions,
           dependsOn: resolvedDeps,
           requiresApproval: planned.requiresApproval,
           timeoutSeconds: planned.timeoutSeconds,
-          metadata: (planned.metadata as Record<string, unknown>) ?? null,
+          assignmentReason: defaultActor ? `Planner assigned default actor ${defaultActor.displayName}` : null,
+          actorSnapshot: defaultActor
+            ? toJson({
+                id: defaultActor.id,
+                key: defaultActor.key,
+                displayName: defaultActor.displayName,
+                kind: defaultActor.kind,
+                role: defaultActor.role,
+                context: defaultActor.context,
+                supportedAgentTypes: defaultActor.supportedAgentTypes,
+                runtimeAgentType: defaultActor.runtimeAgentType ?? null,
+              })
+            : Prisma.JsonNull,
+          metadata: toJson(planned.metadata ?? Prisma.JsonNull),
         },
       });
       createdTaskIds.push(task.id);
+
+      await logEvent(prisma, {
+        eventType: EVENT_TYPES.TASK_CREATED,
+        missionId,
+        taskId: task.id,
+        payload: {
+          taskId: task.id,
+          title: task.title,
+          agentType: task.agentType,
+          assignmentMode: task.assignmentMode,
+          resolvedActorId: task.resolvedActorId,
+        },
+      });
     }
 
     await logEvent(prisma, {
@@ -174,6 +208,7 @@ async function tick(): Promise<void> {
 }
 
 async function run(): Promise<void> {
+  await syncDefaultActors(prisma);
   log.info({ pollIntervalMs: POLL_INTERVAL_MS }, "Orchestrator started");
 
   const loop = async () => {

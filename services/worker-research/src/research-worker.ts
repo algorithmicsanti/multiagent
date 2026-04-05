@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { prisma } from "@wm/db";
+import { prisma, Prisma } from "@wm/db";
 import type { AgentJobPayload, WorkerResult } from "@wm/agent-core";
 import { ArtifactType } from "@wm/agent-core";
 import { logEvent, EVENT_TYPES, createChildLogger } from "@wm/observability";
@@ -116,7 +116,7 @@ Produce your research now.`;
     await prisma.taskRun.update({
       where: { id: runId },
       data: {
-        outputPayload: researchOutput,
+        outputPayload: researchOutput as Prisma.InputJsonValue,
         finishedAt: new Date(),
         status: "completed",
         durationMs,
@@ -216,7 +216,9 @@ Produce your research now.`;
       status: "failed",
       summary: `Research failed: ${errMsg}`,
       outputPayload: {},
-      error: { message: errMsg, stack: err instanceof Error ? err.stack : undefined },
+      error: err instanceof Error && err.stack
+        ? { message: errMsg, stack: err.stack }
+        : { message: errMsg },
     };
   }
 }

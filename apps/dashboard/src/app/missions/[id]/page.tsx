@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { formatDateTimeCDMX, formatTimeCDMX } from "../../lib/datetime";
+import { resolveServerApiUrl } from "../../lib/api-url";
 
-const API_URL = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+const API_URL = resolveServerApiUrl();
 
 async function getMission(id: string) {
   const res = await fetch(`${API_URL}/api/v1/missions/${id}`, { cache: "no-store" });
@@ -151,12 +152,20 @@ function renderEventMessage(eventType: string, payload: any) {
       return `El plan estratégico ha sido definido exitosamente con las siguientes fases metodológicas: ${payload.notes || 'Tareas definidas'}.`;
     case 'MISSION_DISPATCHING':
       return `Asignando tareas a los agentes especialistas requeridos...`;
+    case 'TASK_CREATED':
+      return `Se registró una nueva tarea "${payload.title || 'sin título'}" en la misión.`;
+    case 'TASK_DELEGATED':
+      return `El Orquestador Central delegó la tarea a ${payload.resolvedActorName || 'un actor'} porque ${payload.reason || 'era la mejor opción disponible'}.`;
+    case 'TASK_ASSIGNED':
+      return `La tarea quedó asignada a ${payload.actorName || 'un actor'} y el sistema está esperando su entrega final.`;
     case 'TASK_ENQUEUED':
       return `Una nueva tarea ha sido delegada y puesta en espera. El agente de tipo ${payload.executionAgentType || payload.requestedAgentType || 'desconocido'} tomará el control pronto.`;
     case 'TASK_STARTED':
       return `El agente asignado ha comenzado a trabajar en la tarea activa.`;
     case 'TASK_COMPLETED':
       return `El agente finalizó el procesamiento de la tarea con éxito.`;
+    case 'TASK_MANUAL_COMPLETED':
+      return `${payload.actorName || 'Un humano'} cerró manualmente la tarea con el resumen: ${payload.summary || 'sin resumen'}.`;
     case 'TASK_FAILED':
       return `El agente encontró un error durante la ejecución: ${payload.error || payload.reason || 'Causa desconocida'}`;
     case 'MISSION_COMPLETED':
@@ -183,7 +192,7 @@ export default async function MissionDetailPage({ params }: { params: Promise<{ 
   const isCompleted = mission.status === "DONE";
   const requestedFormat = extractRequestedFormat(mission);
   const latestArtifact = mission.artifacts && mission.artifacts.length > 0
-    ? mission.artifacts.slice(-1)[0]
+    ? mission.artifacts[0]
     : null;
   const eventSummary = extractSummaryFromEvents(events as Array<{ payload: unknown }>);
 
@@ -204,7 +213,12 @@ export default async function MissionDetailPage({ params }: { params: Promise<{ 
           </div>
           <h1 className="page-title">{mission.title}</h1>
         </div>
-        <StatusBadge status={mission.status} />
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+          <Link href={`/missions/${id}/tasks/new`} className="btn">
+            NEW TASK
+          </Link>
+          <StatusBadge status={mission.status} />
+        </div>
       </div>
 
       {isCompleted && (
@@ -297,9 +311,13 @@ export default async function MissionDetailPage({ params }: { params: Promise<{ 
               id: string;
               title: string;
               agentType: string;
+              assignmentMode: string;
+              assignmentReason?: string | null;
               status: string;
               retries: number;
               requiresApproval: boolean;
+              requestedActor?: { displayName: string; kind: string } | null;
+              resolvedActor?: { displayName: string; kind: string; role?: string | null } | null;
               metadata?: unknown;
             }) => {
               const routing = getTaskRouting(t.metadata);
@@ -310,15 +328,27 @@ export default async function MissionDetailPage({ params }: { params: Promise<{ 
                 <div className="isometric-card" style={{ borderLeft: `2px solid var(--accent)` }}>
                   <div className="card-header" style={{ marginBottom: 8, paddingBottom: 8 }}>
                     <span className="badge badge-planning">{t.agentType} CORE</span>
+                    <span className="data-label">{t.assignmentMode}</span>
                   </div>
                   
-                  <div style={{ marginBottom: 12, fontSize: 13, fontWeight: 500, color: "#fff" }}>
+                  <div style={{ marginBottom: 12, fontSize: 13, fontWeight: 500, color: "var(--text)" }}>
                     {t.title}
                   </div>
                   
                   <div className="data-row">
                     <span className="data-label">STATE:</span>
                     <StatusBadge status={t.status} />
+                  </div>
+
+                  <div style={{ marginTop: 10, padding: "10px 12px", border: "1px dashed var(--border)", background: "rgba(91, 66, 243, 0.04)" }}>
+                    <div className="data-row">
+                      <span className="data-label">REQUESTED</span>
+                      <span className="data-value">{t.requestedActor?.displayName ?? "System default"}</span>
+                    </div>
+                    <div className="data-row" style={{ marginBottom: 0 }}>
+                      <span className="data-label">RESOLVED</span>
+                      <span className="data-value">{t.resolvedActor?.displayName ?? "Pending selection"}</span>
+                    </div>
                   </div>
 
                   {routing && (
@@ -340,6 +370,12 @@ export default async function MissionDetailPage({ params }: { params: Promise<{ 
                   )}
                   
                   <div className="card-details" style={{ display: "block", marginTop: 12, paddingTop: 12 }}>
+                    {t.assignmentReason && (
+                      <div style={{ marginBottom: 12 }}>
+                        <div className="data-label" style={{ marginBottom: 6 }}>ASSIGNMENT REASON</div>
+                        <div className="data-value">{t.assignmentReason}</div>
+                      </div>
+                    )}
                     <div className="data-row">
                       <span className="data-label">ERRORS:</span>
                       <span className="data-value" style={{ color: t.retries > 0 ? "var(--red)" : "inherit"}}>{t.retries} count</span>

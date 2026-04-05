@@ -1,27 +1,28 @@
-# Runbook: Instance Ops Baseline (Docker + Recovery)
+# Runbook: Instance Ops Baseline
 
 ## Objetivo
-Tener una rutina operativa mínima para esta instancia: levantar, actualizar, verificar y recuperar servicios del stack.
+Tener una rutina minima para levantar, actualizar, verificar y recuperar el stack Docker local o en VPS.
 
-## Stack detectado
-- `postgres` (`postgres:16-alpine`)
-- `redis` (`redis:7-alpine`)
-- `api` (`@wm/api` en puerto `3001`)
-- `orchestrator` (`@wm/orchestrator`)
-- `worker-research` (`@wm/worker-research`)
-- `dashboard` (`@wm/dashboard` en puerto `3000`)
-- Compose file: `infra/compose/docker-compose.dev.yml`
+## Stack esperado
+- `postgres` en `5432`
+- `redis` en `6379`
+- `api` en `3001`
+- `dashboard` en `3000`
+- `orchestrator`
+- `worker-research`
+- `worker-promptops`
 
-## Preflight (bloqueantes)
-1. Docker socket accesible por el usuario operativo.
-2. `pnpm` instalado (engine del repo: `pnpm >=9`).
-3. `.env` presente en raíz del repo (`cp -n .env.example .env`).
+## Preflight
+1. Docker socket accesible para el usuario operativo.
+2. `pnpm` instalado.
+3. `.env` presente en la raiz del repo.
+4. `DATABASE_URL` apuntando al Postgres correcto.
 
 ## Comandos operativos
 ```bash
 cd /home/claw/.openclaw/workspace/multiagent
 
-# levantar/rebuild
+# levantar o rebuild
 ./infra/scripts/deploy-staging.sh
 
 # estado
@@ -38,39 +39,44 @@ curl http://localhost:3001/api/v1/health
 ./infra/scripts/restart-workers.sh
 
 # reinicio total
-pnpm infra:down && pnpm infra:up
+pnpm infra:down
+pnpm infra:up
+pnpm db:deploy
 ```
 
-## Flujo de actualización recomendado
+## Politica de migraciones
+- `pnpm db:migrate` es solo para desarrollo local cuando se crea una migracion nueva.
+- `pnpm db:deploy` es el comando correcto para OpenClaw, localhost y despliegues.
+
+## Flujo recomendado de actualizacion
 1. `git fetch --all && git pull --ff-only`
 2. `pnpm install --frozen-lockfile`
 3. `pnpm build && pnpm typecheck`
-4. `pnpm db:migrate`
-5. `docker compose -f infra/compose/docker-compose.dev.yml up -d --build`
+4. `pnpm infra:up`
+5. `pnpm db:deploy`
 6. `./infra/scripts/check-services.sh`
 7. `./infra/scripts/check-logs.sh 200`
+8. `pnpm healthcheck`
 
-## Recuperación rápida por síntoma
-- **Contenedor en restart loop**
-  - `docker compose -f infra/compose/docker-compose.dev.yml logs <service> --tail=200`
-  - validar variables en `.env`
+## Recuperacion rapida por sintoma
+- Contenedor en restart loop:
+  - revisar `docker compose -f infra/compose/docker-compose.dev.yml logs <service> --tail=200`
+  - validar `.env`
   - rebuild del servicio afectado
-
-- **API sin health (`/api/v1/health`)**
-  - revisar `api` logs
+- API sin health:
+  - revisar logs de `api`
   - validar conectividad a `postgres` y `redis`
   - reiniciar `api`
-
-- **Orchestrator/worker sin procesar**
-  - revisar logs de `orchestrator` y `worker-research`
-  - inspeccionar Redis (`keys bull:agent:*`)
+- Orchestrator o workers sin procesar:
+  - revisar logs de `orchestrator`, `worker-research` y `worker-promptops`
+  - validar Redis y jobs pendientes
   - reiniciar workers
-
-- **Error Docker socket permission denied**
+- Error de Docker socket:
   - `sudo usermod -aG docker $USER`
-  - relogin (o `newgrp docker`)
+  - relogin o `newgrp docker`
 
-## Notas de esta instancia (2026-03-15)
-- Desde esta sesión no hay acceso a Docker daemon (socket denied).
-- Tampoco hay `pnpm` disponible en PATH.
-- Sin esos dos puntos no se puede ejecutar deploy/healthchecks end-to-end desde aquí.
+## Si falla la migracion
+1. Confirmar que `localhost:5432` esta accesible.
+2. Confirmar que el contenedor `postgres` esta healthy.
+3. Reintentar `pnpm db:deploy`.
+4. Si la base no estaba arriba durante el deploy, correr la migracion despues de levantar el stack y antes de validar la app.

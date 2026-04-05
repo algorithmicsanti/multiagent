@@ -25,6 +25,7 @@ enum TaskStatus {
   PENDING
   ENQUEUED
   RUNNING
+  WAITING_RESULT
   COMPLETED
   FAILED
   CANCELLED
@@ -39,6 +40,17 @@ enum AgentType {
   BACKEND
   DEVOPS
   PROMPTOPS
+}
+
+enum ActorKind {
+  HUMAN
+  AGENT
+  SYSTEM
+}
+
+enum TaskAssignmentMode {
+  DIRECT
+  ORCHESTRATOR
 }
 
 enum ApprovalStatus {
@@ -80,10 +92,38 @@ model Mission {
   @@index([createdAt])
 }
 
+model Actor {
+  id                    String   @id
+  key                   String   @unique
+  displayName           String
+  kind                  ActorKind
+  role                  String
+  context               String
+  supportedAgentTypes   AgentType[]
+  runtimeAgentType      AgentType?
+  canBeAssignedDirectly Boolean  @default(true)
+  canReceiveDelegation  Boolean  @default(true)
+  priority              Int      @default(50)
+  active                Boolean  @default(true)
+  metadata              Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  requestedTasks Task[] @relation("TaskRequestedActor")
+  resolvedTasks  Task[] @relation("TaskResolvedActor")
+
+  @@index([active, kind])
+  @@index([priority])
+}
+
 model Task {
   id               String     @id @default(cuid())
   missionId        String
   agentType        AgentType
+  assignmentMode   TaskAssignmentMode @default(DIRECT)
+  requestedActorId String?
+  resolvedActorId  String?
   title            String
   instructions     String
   status           TaskStatus @default(PENDING)
@@ -92,20 +132,27 @@ model Task {
   timeoutSeconds   Int        @default(300)
   requiresApproval Boolean    @default(false)
   dependsOn        String[]
+  assignmentReason String?
+  actorSnapshot    Json?
   metadata         Json?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  mission   Mission    @relation(fields: [missionId], references: [id], onDelete: Cascade)
-  runs      TaskRun[]
-  approvals Approval[]
-  artifacts Artifact[]
-  eventLogs EventLog[]
+  mission        Mission  @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  requestedActor Actor?   @relation("TaskRequestedActor", fields: [requestedActorId], references: [id], onDelete: SetNull)
+  resolvedActor  Actor?   @relation("TaskResolvedActor", fields: [resolvedActorId], references: [id], onDelete: SetNull)
+  runs           TaskRun[]
+  approvals      Approval[]
+  artifacts      Artifact[]
+  eventLogs      EventLog[]
 
   @@index([missionId])
   @@index([status])
   @@index([agentType])
+  @@index([assignmentMode])
+  @@index([requestedActorId])
+  @@index([resolvedActorId])
 }
 
 model TaskRun {

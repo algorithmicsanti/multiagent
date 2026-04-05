@@ -20,7 +20,7 @@ const worker = new Worker<AgentJobPayload>(
     return processResearchJob(job.data);
   },
   {
-    connection: redis,
+    connection: redis as never,
     concurrency: CONCURRENCY,
   }
 );

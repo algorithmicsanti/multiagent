@@ -123,8 +123,12 @@ run_pnpm build
 echo "--- Typechecking ---"
 run_pnpm typecheck
 
-echo "--- Running migrations ---"
-run_pnpm db:migrate
+if [ "$TARGET" = "full" ] || [ "$TARGET" = "backend" ]; then
+  echo "--- Running migrations (deploy) ---"
+  run_pnpm db:deploy
+else
+  echo "--- Skipping DB migrations for target=$TARGET ---"
+fi
 
 echo "--- Restarting target services ---"
 run_compose up -d --build "${DEPLOY_SERVICES[@]}"

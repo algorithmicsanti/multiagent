@@ -1,10 +1,11 @@
-import type { AgentType } from "../enums.js";
+import type { ActorSnapshot } from "../actors.js";
+import type { AgentType, TaskAssignmentMode } from "../enums.js";
 
 export interface ArtifactRef {
   id: string;
   artifactType: string;
   pathOrUrl: string;
-  metadata?: Record<string, unknown>;
+  metadata?: Record<string, unknown> | undefined;
 }
 
 export interface TaskSummaryRef {
@@ -19,6 +20,9 @@ export interface MissionContext {
   missionDescription: string;
   previousArtifacts: ArtifactRef[];
   completedTaskSummaries: TaskSummaryRef[];
+  requestedActor?: ActorSnapshot | null;
+  assignedActor?: ActorSnapshot | null;
+  assignmentReason?: string | null;
 }
 
 export interface AgentJobPayload {
@@ -26,9 +30,11 @@ export interface AgentJobPayload {
   taskId: string;
   missionId: string;
   agentType: AgentType;
+  taskAgentType: AgentType;
   runId: string;
   instructions: string;
   context: MissionContext;
+  assignmentMode: TaskAssignmentMode;
   retryCount: number;
 }
 

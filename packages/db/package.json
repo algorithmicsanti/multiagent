@@ -18,10 +18,12 @@
     "clean": "rm -rf dist",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
     "db:push": "prisma db push"
   },
   "dependencies": {
+    "@wm/agent-core": "workspace:*",
     "@prisma/client": "^6.1.0"
   },
   "devDependencies": {

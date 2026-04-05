@@ -2,27 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-
-function resolveApiUrl(): string {
-  const configured = process.env.NEXT_PUBLIC_API_URL;
-
-  if (typeof window !== "undefined") {
-    const { protocol, hostname } = window.location;
-    const runtimeUrl = `${protocol}//${hostname}:3001`;
-
-    if (!configured) return runtimeUrl;
-
-    try {
-      const parsed = new URL(configured);
-      const hostIsLocal = parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1";
-      return hostIsLocal ? runtimeUrl : configured;
-    } catch {
-      return runtimeUrl;
-    }
-  }
-
-  return configured ?? "http://api:3001";
-}
+import { resolveBrowserApiUrl } from "../../lib/api-url";
 
 export default function NewMissionPage() {
   const router = useRouter();
@@ -42,7 +22,7 @@ export default function NewMissionPage() {
     setError(null);
 
     try {
-      const apiUrl = resolveApiUrl();
+      const apiUrl = resolveBrowserApiUrl();
       const res = await fetch(`${apiUrl}/api/v1/missions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

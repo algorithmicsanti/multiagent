@@ -52,11 +52,18 @@ function shiftDependencyIndex(dep: string, fromIndex: number) {
 }
 
 function normalizeMissionPlan(plan: MissionPlan): MissionPlan {
-  const tasks = plan.tasks.map((task) => ({
-    ...task,
-    dependsOn: [...task.dependsOn],
-    metadata: task.metadata ? { ...task.metadata } : undefined,
-  }));
+  const tasks: PlannedTask[] = plan.tasks.map((task) => {
+    const cloned: PlannedTask = {
+      ...task,
+      dependsOn: [...task.dependsOn],
+    };
+
+    if (task.metadata) {
+      cloned.metadata = { ...task.metadata };
+    }
+
+    return cloned;
+  });
 
   const unsupportedCounts = new Map<AgentType, number>();
   for (const task of tasks) {

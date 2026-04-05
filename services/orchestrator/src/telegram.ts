@@ -47,6 +47,7 @@ export async function pollTelegramUpdates(): Promise<void> {
               description: description,
               status: "NEW", // O usando MissionStatus.NEW
               priority: 50,
+              createdBy: "telegram",
             },
           });
           
